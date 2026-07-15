@@ -17,6 +17,7 @@
 class DockWidget : public ads::CDockWidget
 {
   Q_OBJECT
+  friend class PlotDocker;
 
 public:
   DockWidget(PlotDataMapRef& datamap, QWidget* parent = nullptr);
@@ -41,6 +42,8 @@ public slots:
   void createMapPanelSplit();
 
 private:
+  DockWidget* splitHorizontalLocal();
+
   PlotWidget* _plot_widget = nullptr;
   MapDockPanel* _map_panel = nullptr;
 

@@ -354,8 +354,8 @@ void MapDockPanel::showContextMenu(const QPoint& pos)
   menu.setStyleSheet("QMenu::icon { width: 12px; }");
   auto* fit_action = menu.addAction("Fit to View");
   menu.addSeparator();
-  auto* split_h_action = menu.addAction("Split Horizontally");
-  auto* split_v_action = menu.addAction("Split Vertically");
+  auto* split_h_action = menu.addAction("Add Panel Right");
+  auto* split_v_action = menu.addAction("Add Panel Below");
   auto* split_map_action = menu.addAction("Add Map View");
 
   {

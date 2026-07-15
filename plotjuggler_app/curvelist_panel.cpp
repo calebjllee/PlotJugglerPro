@@ -58,6 +58,11 @@ CurveListPanel::CurveListPanel(PlotDataMapRef& mapped_plot_data,
 
   QSettings settings;
 
+  bool flat_signals = settings.value("CurveListPanel/flat_signals", true).toBool();
+  _tree_view->setFlatSignalList(flat_signals);
+  ui->checkBoxFlatSignals->setChecked(flat_signals);
+  ui->checkBoxShowValues->setChecked(true);
+
   int point_size = settings.value("FilterableListWidget/table_point_size", 9).toInt();
   changeFontSize(point_size);
 
@@ -243,6 +248,45 @@ void CurveListPanel::refreshColumns()
 
   updateFilter();
   updateAppearance();
+}
+
+void CurveListPanel::updateTreeModel()
+{
+  std::vector<std::string> plot_names(_tree_view_items.begin(), _tree_view_items.end());
+
+  _tree_view->clear();
+
+  for (const auto& plot_name : plot_names)
+  {
+    QString plot_id = QString::fromStdString(plot_name);
+    QString group_name;
+
+    auto FindInPlotData = [&](auto& plot_data, const std::string& name) {
+      auto it = plot_data.find(name);
+      if (it != plot_data.end())
+      {
+        auto& plot = it->second;
+        if (plot.group())
+        {
+          group_name = QString::fromStdString(plot.group()->name());
+        }
+        return true;
+      }
+      return false;
+    };
+
+    bool found = FindInPlotData(_plot_data.numeric, plot_name) ||
+                 FindInPlotData(_plot_data.scatter_xy, plot_name) ||
+                 FindInPlotData(_plot_data.strings, plot_name);
+
+    if (found)
+    {
+      _tree_view->addItem(group_name, getTreeName(plot_id), plot_id);
+    }
+  }
+
+  _column_width_dirty = true;
+  refreshColumns();
 }
 
 void CurveListPanel::updateFilter()
@@ -566,6 +610,16 @@ void CurveListPanel::on_checkBoxShowValues_toggled(bool show)
 {
   _tree_view->hideValuesColumn(!show);
   _custom_view->hideValuesColumn(!show);
+  emit hiddenItemsChanged();
+}
+
+void CurveListPanel::on_checkBoxFlatSignals_toggled(bool flat)
+{
+  QSettings settings;
+  settings.setValue("CurveListPanel/flat_signals", flat);
+
+  _tree_view->setFlatSignalList(flat);
+  updateTreeModel();
   emit hiddenItemsChanged();
 }
 

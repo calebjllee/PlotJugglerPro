@@ -165,6 +165,9 @@
         <property name="focusPolicy">
          <enum>Qt::NoFocus</enum>
         </property>
+        <property name="toolTip">
+         <string>Add Panel Right</string>
+        </property>
         <property name="text">
          <string/>
         </property>
@@ -199,6 +202,9 @@
         </property>
         <property name="focusPolicy">
          <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="toolTip">
+         <string>Add Panel Below</string>
         </property>
         <property name="text">
          <string/>

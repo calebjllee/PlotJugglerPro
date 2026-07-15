@@ -229,7 +229,7 @@ void PlotDocker::restoreSplitter(QDomElement elem, DockWidget* widget)
   widgets[0] = widget;
   for (int i = 1; i < splitter_count; i++)
   {
-    widget = (orientation == Qt::Horizontal) ? widget->splitHorizontal() : widget->splitVertical();
+    widget = (orientation == Qt::Horizontal) ? widget->splitHorizontalLocal() : widget->splitVertical();
     widgets[i] = widget;
   }
 
@@ -539,11 +539,10 @@ DockWidget::~DockWidget()
 
 DockWidget* DockWidget::splitHorizontal()
 {
-  // create a sibling (same parent)
   auto new_widget = new DockWidget(_datamap, qobject_cast<QWidget*>(parent()));
 
   PlotDocker* parent_docker = static_cast<PlotDocker*>(dockManager());
-  auto area = parent_docker->addDockWidget(ads::RightDockWidgetArea, new_widget, dockAreaWidget());
+  auto area = parent_docker->addDockWidget(ads::RightDockWidgetArea, new_widget);
 
   area->setAllowedAreas(ads::OuterDockAreas);
 
@@ -566,6 +565,25 @@ DockWidget* DockWidget::splitVertical()
   auto area = parent_docker->addDockWidget(ads::BottomDockWidgetArea, new_widget, dockAreaWidget());
 
   area->setAllowedAreas(ads::OuterDockAreas);
+  parent_docker->registerPlotWidget(new_widget->plotWidget());
+
+  connect(this, &DockWidget::undoableChange, parent_docker, &PlotDocker::undoableChange);
+
+  parent_docker->refreshSharedTimeAxes();
+  this->undoableChange();
+
+  return new_widget;
+}
+
+DockWidget* DockWidget::splitHorizontalLocal()
+{
+  auto new_widget = new DockWidget(_datamap, qobject_cast<QWidget*>(parent()));
+
+  PlotDocker* parent_docker = static_cast<PlotDocker*>(dockManager());
+  auto area = parent_docker->addDockWidget(ads::RightDockWidgetArea, new_widget, dockAreaWidget());
+
+  area->setAllowedAreas(ads::OuterDockAreas);
+
   parent_docker->registerPlotWidget(new_widget->plotWidget());
 
   connect(this, &DockWidget::undoableChange, parent_docker, &PlotDocker::undoableChange);

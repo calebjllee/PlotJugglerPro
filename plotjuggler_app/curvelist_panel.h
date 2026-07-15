@@ -78,6 +78,8 @@ private slots:
 
   void on_checkBoxShowValues_toggled(bool show);
 
+  void on_checkBoxFlatSignals_toggled(bool flat);
+
   void on_pushButtonTrash_clicked(bool checked);
 
 public slots:

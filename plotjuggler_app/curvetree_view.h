@@ -20,6 +20,8 @@ public:
 
   void addItem(const QString& prefix, const QString& tree_name, const QString& plot_ID) override;
 
+  void setFlatSignalList(bool flat);
+
   void refreshColumns() override;
 
   std::vector<std::string> getSelectedNames() override;
@@ -49,6 +51,8 @@ public:
 
 private:
   void expandChildren(bool expanded, QTreeWidgetItem* item);
+
+  bool _flat_signal_list = false;
 
   int _hidden_count = 0;
   int _leaf_count = 0;

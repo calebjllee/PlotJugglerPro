@@ -220,10 +220,10 @@ void PlotWidget::buildActions()
   connect(_action_convert_to_map, &QAction::triggered, this,
           [this]() { emit convertToMapPanelRequested(); });
 
-  _action_split_horizontal = new QAction("&Split Horizontally", this);
+  _action_split_horizontal = new QAction("Add Panel &Right", this);
   connect(_action_split_horizontal, &QAction::triggered, this, &PlotWidget::splitHorizontal);
 
-  _action_split_vertical = new QAction("&Split Vertically", this);
+  _action_split_vertical = new QAction("Add Panel &Below", this);
   connect(_action_split_vertical, &QAction::triggered, this, &PlotWidget::splitVertical);
 
   _action_removeAllCurves = new QAction("&Remove ALL curves", this);

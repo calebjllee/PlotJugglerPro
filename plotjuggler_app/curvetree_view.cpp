@@ -13,6 +13,7 @@
 #include <QToolTip>
 #include <QKeySequence>
 #include <QClipboard>
+#include <algorithm>
 
 class TreeWidgetItem : public QTreeWidgetItem
 {
@@ -26,6 +27,46 @@ public:
     return doj::alphanum_impl(this->text(0).toLocal8Bit(), other.text(0).toLocal8Bit()) < 0;
   }
 };
+
+QString flatSignalLeafName(const QString& plot_ID)
+{
+  const int slash_pos = plot_ID.lastIndexOf('/');
+  const int backslash_pos = plot_ID.lastIndexOf('\\');
+  const int separator_pos = std::max(slash_pos, backslash_pos);
+  if (separator_pos >= 0 && separator_pos + 1 < plot_ID.size())
+  {
+    return plot_ID.mid(separator_pos + 1);
+  }
+  return plot_ID;
+}
+
+QString flatSignalParentName(const QString& plot_ID)
+{
+  const int slash_pos = plot_ID.lastIndexOf('/');
+  const int backslash_pos = plot_ID.lastIndexOf('\\');
+  const int separator_pos = std::max(slash_pos, backslash_pos);
+  if (separator_pos <= 0)
+  {
+    return {};
+  }
+
+  const QString prefix = plot_ID.left(separator_pos);
+  const int parent_slash_pos = prefix.lastIndexOf('/');
+  const int parent_backslash_pos = prefix.lastIndexOf('\\');
+  const int parent_separator_pos = std::max(parent_slash_pos, parent_backslash_pos);
+  if (parent_separator_pos >= 0 && parent_separator_pos + 1 < prefix.size())
+  {
+    return prefix.mid(parent_separator_pos + 1);
+  }
+  return prefix;
+}
+
+QString disambiguatedFlatSignalName(const QString& plot_ID)
+{
+  const QString leaf_name = flatSignalLeafName(plot_ID);
+  const QString parent_name = flatSignalParentName(plot_ID);
+  return parent_name.isEmpty() ? leaf_name : QString("%1 (%2)").arg(leaf_name, parent_name);
+}
 
 CurveTreeView::CurveTreeView(CurveListPanel* parent) : QTreeWidget(parent), CurvesView(parent)
 {
@@ -83,7 +124,6 @@ CurveTreeView::CurveTreeView(CurveListPanel* parent) : QTreeWidget(parent), Curv
 void CurveTreeView::clear()
 {
   _tooltip_item = nullptr;
-  _tooltip_timer->stop();
   QTreeWidget::clear();
   _leaf_count = 0;
   _hidden_count = 0;
@@ -113,6 +153,46 @@ void CurveTreeView::addItem(const QString& group_name, const QString& tree_name,
 
   if (parts.size() == 0)
   {
+    return;
+  }
+
+  if (_flat_signal_list)
+  {
+    QString display_name = flatSignalLeafName(plot_ID);
+    bool has_name_collision = false;
+    auto* root = invisibleRootItem();
+    for (int i = 0; i < root->childCount(); i++)
+    {
+      auto* existing_item = root->child(i);
+      const QString existing_id = existing_item->data(0, Name).toString();
+      if (flatSignalLeafName(existing_id) == display_name)
+      {
+        existing_item->setText(0, disambiguatedFlatSignalName(existing_id));
+        has_name_collision = true;
+      }
+    }
+
+    if (has_name_collision)
+    {
+      display_name = disambiguatedFlatSignalName(plot_ID);
+    }
+
+    auto* child_item = new TreeWidgetItem(invisibleRootItem());
+    child_item->setText(0, display_name);
+    child_item->setText(1, "-");
+
+    QFont font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
+    font.setPointSize(_point_size);
+    child_item->setFont(0, font);
+
+    font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    font.setPointSize(_point_size - 2);
+    child_item->setFont(1, font);
+    child_item->setTextAlignment(1, Qt::AlignRight);
+    child_item->setData(0, Name, plot_ID);
+    child_item->setData(0, IsGroupName, false);
+
+    _leaf_count++;
     return;
   }
 
@@ -203,6 +283,11 @@ void CurveTreeView::addItem(const QString& group_name, const QString& tree_name,
     }
   }
   _leaf_count++;
+}
+
+void CurveTreeView::setFlatSignalList(bool flat)
+{
+  _flat_signal_list = flat;
 }
 
 void CurveTreeView::refreshColumns()
