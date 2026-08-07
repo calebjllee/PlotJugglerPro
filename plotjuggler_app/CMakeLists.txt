@@ -98,6 +98,14 @@ endif()
 add_executable(plotjuggler ${PLOTJUGGLER_SRC} ${RES_SRC} ${UI_SRC}
                            ${BACKWARD_ENABLE})
 
+if(WIN32 AND MSVC)
+  target_link_options(
+    plotjuggler
+    PRIVATE
+      "/MANIFEST:EMBED"
+      "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/plotjuggler.exe.manifest")
+endif()
+
 if(wasmer_FOUND)
   target_link_libraries(plotjuggler PRIVATE wasmer::wasmer)
   target_compile_definitions(plotjuggler PRIVATE WASM_RUNTIME_ENABLED)

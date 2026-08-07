@@ -109,6 +109,7 @@ private:
   std::optional<Range> fullTimeseriesRange() const;
   void updateTimelineSlider();
   void repositionTimelineSlider();
+  void setTimelineSliderReservedHeight(int height);
   PlotWidget* firstTimeSeriesPlot() const;
   double timeOffset() const;
 
@@ -122,6 +123,7 @@ private:
   double _tracker_time = 0.0;
   bool _applying_time_viewport = false;
   bool _updating_time_slider = false;
+  int _timeline_slider_reserved_height = 0;
 
 signals:
 

@@ -7,6 +7,7 @@
 #include "mainwindow.h"
 #include <iostream>
 #include <QApplication>
+#include <QGuiApplication>
 #include <QSplashScreen>
 #include <QThread>
 #include <QCommandLineParser>
@@ -46,6 +47,22 @@
 
 static QString VERSION_STRING =
     QString("%1.%2.%3").arg(PJ_MAJOR_VERSION).arg(PJ_MINOR_VERSION).arg(PJ_PATCH_VERSION);
+
+void configureQtHighDpiScaling()
+{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
+  QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+#endif
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 1, 0)
+  QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+#endif
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+  QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
+      Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+#endif
+}
 
 inline int GetVersionNumber(QString str)
 {
@@ -149,6 +166,8 @@ std::vector<std::string> MergeArguments(const std::vector<std::string>& args)
 
 int main(int argc, char* argv[])
 {
+  configureQtHighDpiScaling();
+
   std::vector<std::string> args;
 
 #if !defined(COMPILED_WITH_CATKIN) && !defined(COMPILED_WITH_AMENT)

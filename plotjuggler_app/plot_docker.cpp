@@ -35,6 +35,8 @@ public:
 namespace
 {
 constexpr double kMinimumYAxisExtent = 68.0;
+constexpr int kTimelineSliderHeight = 24;
+constexpr int kTimelineSliderGap = 4;
 
 void collectPlotWidgets(QWidget* widget, std::vector<PlotWidget*>& plots)
 {
@@ -621,10 +623,12 @@ void PlotDocker::updateTimelineSlider()
 
   if (!_time_viewport)
   {
+    setTimelineSliderReservedHeight(0);
     _time_slider->hide();
     return;
   }
 
+  setTimelineSliderReservedHeight(kTimelineSliderHeight + kTimelineSliderGap);
   _time_slider->show();
   _updating_time_slider = true;
   const double offset = timeOffset();
@@ -643,6 +647,7 @@ void PlotDocker::repositionTimelineSlider()
   auto plot = firstTimeSeriesPlot();
   if (!plot || !_time_viewport)
   {
+    setTimelineSliderReservedHeight(0);
     _time_slider->hide();
     return;
   }
@@ -650,15 +655,28 @@ void PlotDocker::repositionTimelineSlider()
   const QRect canvas_rect = plot->canvasRectIn(this);
   if (!canvas_rect.isValid())
   {
+    setTimelineSliderReservedHeight(0);
     _time_slider->hide();
     return;
   }
 
-  constexpr int slider_height = 24;
-  const int y = std::max(0, height() - slider_height);
-  _time_slider->setGeometry(canvas_rect.left(), y, canvas_rect.width(), slider_height);
+  setTimelineSliderReservedHeight(kTimelineSliderHeight + kTimelineSliderGap);
+  const int y = std::max(0, height() - kTimelineSliderHeight);
+  _time_slider->setGeometry(canvas_rect.left(), y, canvas_rect.width(), kTimelineSliderHeight);
   _time_slider->show();
   _time_slider->raise();
+}
+
+void PlotDocker::setTimelineSliderReservedHeight(int height)
+{
+  height = std::max(0, height);
+  if (_timeline_slider_reserved_height == height)
+  {
+    return;
+  }
+
+  _timeline_slider_reserved_height = height;
+  setContentsMargins(0, 0, 0, height);
 }
 
 PlotWidget* PlotDocker::firstTimeSeriesPlot() const
