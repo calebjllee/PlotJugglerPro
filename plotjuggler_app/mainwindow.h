@@ -93,8 +93,6 @@ public slots:
 
   void onPlotTabAdded(PlotDocker* docker);
 
-  void onPlotZoomChanged(PlotWidget* modified_plot, QRectF new_range);
-
   void on_tabbedAreaDestroyed(QObject* object);
 
   void updateDataAndReplot(bool replot_hidden_tabs);
@@ -112,8 +110,6 @@ public slots:
   void onCustomPlotCreated(std::vector<CustomPlotPtr> plot);
 
   void onPlaybackLoop();
-
-  void linkedZoomOut();
 
 private:
   Ui::MainWindow* ui;

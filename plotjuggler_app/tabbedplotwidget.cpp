@@ -50,8 +50,6 @@ TabbedPlotWidget::TabbedPlotWidget(QString name, QMainWindow* mainwindow,
   // register this instance
   _instances[_name] = this;
 
-  _horizontal_link = true;
-
   QHBoxLayout* main_layout = new QHBoxLayout(this);
   main_layout->setMargin(0);
 
@@ -170,8 +168,6 @@ PlotDocker* TabbedPlotWidget::addTab(QString tab_name)
 
   layout->addWidget(close_button);
   tabWidget()->tabBar()->setTabButton(index, QTabBar::RightSide, button_widget);
-
-  docker->setHorizontalLink(_horizontal_link);
 
   tabWidget()->setCurrentWidget(docker);
 
@@ -328,17 +324,6 @@ void TabbedPlotWidget::on_tabWidget_tabCloseRequested(int index)
 
   tabWidget()->removeTab(index);
   emit undoableChange();
-}
-
-void TabbedPlotWidget::on_buttonLinkHorizontalScale_toggled(bool checked)
-{
-  _horizontal_link = checked;
-
-  for (int i = 0; i < tabWidget()->count(); i++)
-  {
-    PlotDocker* tab = static_cast<PlotDocker*>(tabWidget()->widget(i));
-    tab->setHorizontalLink(_horizontal_link);
-  }
 }
 
 void TabbedPlotWidget::on_requestTabMovement(const QString& destination_name)

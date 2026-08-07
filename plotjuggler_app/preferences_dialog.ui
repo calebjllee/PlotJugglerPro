@@ -331,16 +331,6 @@
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_6">
           <item>
-           <widget class="QCheckBox" name="checkBoxAutoZoomAdded">
-            <property name="text">
-             <string>Curve added to plot</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QCheckBox" name="checkBoxAutoZoomVisibility">
             <property name="text">
              <string>Curve visibility toggled (in curves legend)</string>

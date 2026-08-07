@@ -70,8 +70,6 @@ private slots:
 
   void on_tabWidget_tabCloseRequested(int index);
 
-  void on_buttonLinkHorizontalScale_toggled(bool checked);
-
   void on_requestTabMovement(const QString& destination_name);
 
   void on_moveTabIntoNewWindow();
@@ -83,7 +81,6 @@ private slots:
 private:
   QTabWidget* _tabWidget;
 
-  QPushButton* _buttonHorizontalLink;
   QPushButton* _buttonLegend;
   QPushButton* _buttonAddTab;
 
@@ -96,8 +93,6 @@ private:
   QMainWindow* _main_window;
 
   PlotDataMapRef& _mapped_data;
-
-  bool _horizontal_link;
 
   QString _parent_type;
 

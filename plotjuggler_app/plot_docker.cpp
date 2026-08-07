@@ -15,6 +15,9 @@
 #include <QDebug>
 #include <QInputDialog>
 #include <QLineEdit>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <vector>
 #include "PlotJuggler/svg_util.h"
 
@@ -31,6 +34,8 @@ public:
 
 namespace
 {
+constexpr double kMinimumYAxisExtent = 68.0;
+
 void collectPlotWidgets(QWidget* widget, std::vector<PlotWidget*>& plots)
 {
   if (auto splitter = qobject_cast<QSplitter*>(widget))
@@ -67,23 +72,39 @@ void applySharedTimeAxes(QWidget* widget)
     std::vector<PlotWidget*> stacked_plots;
     collectPlotWidgets(splitter, stacked_plots);
 
-    double left_extent = 0.0;
-    double right_extent = 0.0;
+    std::vector<PlotWidget*> timeseries_plots;
     for (auto plot : stacked_plots)
+    {
+      if (plot && !plot->isXYPlot())
+      {
+        timeseries_plots.push_back(plot);
+      }
+    }
+
+    for (auto plot : timeseries_plots)
+    {
+      plot->setBottomAxisVisible(true);
+      plot->setYAxisMinimumExtent(QwtPlot::yLeft, 0.0);
+      plot->setYAxisMinimumExtent(QwtPlot::yRight, 0.0);
+    }
+
+    double left_extent = kMinimumYAxisExtent;
+    double right_extent = 0.0;
+    for (auto plot : timeseries_plots)
     {
       left_extent = std::max(left_extent, plot->yAxisExtent(QwtPlot::yLeft));
       right_extent = std::max(right_extent, plot->yAxisExtent(QwtPlot::yRight));
     }
 
-    for (auto plot : stacked_plots)
+    for (auto plot : timeseries_plots)
     {
       plot->setYAxisMinimumExtent(QwtPlot::yLeft, left_extent);
       plot->setYAxisMinimumExtent(QwtPlot::yRight, right_extent);
     }
 
-    for (size_t i = 0; i + 1 < stacked_plots.size(); i++)
+    for (size_t i = 0; i + 1 < timeseries_plots.size(); i++)
     {
-      stacked_plots[i]->setBottomAxisVisible(false);
+      timeseries_plots[i]->setBottomAxisVisible(false);
     }
   }
 
@@ -98,6 +119,21 @@ PlotDocker::PlotDocker(QString name, PlotDataMapRef& datamap, QWidget* parent)
   : ads::CDockManager(parent), _name(name), _datamap(datamap)
 {
   ads::CDockComponentsFactory::setFactory(new SplittableComponentsFactory());
+
+  _time_slider = new RealSlider(this);
+  _time_slider->setOrientation(Qt::Horizontal);
+  _time_slider->setFocusPolicy(Qt::WheelFocus);
+  _time_slider->setToolTip(tr("Visible time range"));
+  _time_slider->hide();
+  _time_slider->raise();
+  connect(_time_slider, &RealSlider::realValueChanged, this, [this](double value) {
+    if (_updating_time_slider)
+    {
+      return;
+    }
+    _tracker_time = value;
+    emit trackerTimeEdited(value);
+  });
 
   auto CreateFirstWidget = [&]() {
     if (dockAreaCount() == 0)
@@ -317,6 +353,15 @@ bool PlotDocker::xmlLoadState(QDomElement& tab_element)
     show();
   }
   refreshSharedTimeAxes();
+  for (int index = 0; index < plotCount(); index++)
+  {
+    auto plot = plotAt(index);
+    if (plot && !plot->isXYPlot() && !plot->isEmpty())
+    {
+      setTimeViewport(plot->currentTimeViewport(), nullptr, false);
+      break;
+    }
+  }
   return true;
 }
 
@@ -332,8 +377,39 @@ void PlotDocker::registerPlotWidget(PlotWidget* plot_widget)
     return;
   }
 
-  connect(plot_widget, &PlotWidget::rectChanged, this,
-          [this](PlotWidget*, QRectF) { refreshSharedTimeAxes(); });
+  connect(plot_widget, &PlotWidget::timeViewportEdited, this,
+          &PlotDocker::onTimeViewportEdited);
+  connect(plot_widget, &PlotWidget::timeseriesCurvesDropped, this,
+          &PlotDocker::onTimeseriesCurvesDropped);
+  connect(plot_widget, &PlotWidget::curveListChanged, this, [this]() {
+    bool any_timeseries = false;
+    for (int index = 0; index < plotCount(); index++)
+    {
+      auto plot = plotAt(index);
+      if (plot && !plot->isXYPlot() && !plot->isEmpty())
+      {
+        any_timeseries = true;
+        break;
+      }
+    }
+    if (!any_timeseries)
+    {
+      _time_viewport.reset();
+      updateTimelineSlider();
+      repositionTimelineSlider();
+      return;
+    }
+
+    if (_time_viewport)
+    {
+      applyTimeViewportToPlots(nullptr);
+    }
+    else if (auto range = fullTimeseriesRange())
+    {
+      setTimeViewport(*range, nullptr, false);
+    }
+    setTrackerTime(_tracker_time);
+  });
   emit plotWidgetAdded(plot_widget);
 }
 
@@ -349,18 +425,19 @@ MapDockPanel* PlotDocker::mapPanelAt(int index)
   return dock_widget ? dock_widget->mapPanel() : nullptr;
 }
 
-void PlotDocker::setHorizontalLink(bool enabled)
-{
-  // TODO
-}
-
 void PlotDocker::zoomOut()
 {
+  if (auto range = fullTimeseriesRange())
+  {
+    setTimeViewport(*range, nullptr, true);
+    return;
+  }
+
   for (int index = 0; index < plotCount(); index++)
   {
-    if (auto plot = plotAt(index))
+    if (auto plot = plotAt(index); plot && plot->isXYPlot())
     {
-      plot->zoomOut(false);  // TODO is it false?
+      plot->zoomOut(false);
     }
   }
 }
@@ -394,6 +471,223 @@ void PlotDocker::refreshSharedTimeAxes()
   {
     applySharedTimeAxes(container->rootSplitter());
   }
+  repositionTimelineSlider();
+}
+
+void PlotDocker::setTrackerTime(double tracker_time)
+{
+  _tracker_time = tracker_time;
+  for (int index = 0; index < plotCount(); index++)
+  {
+    if (auto plot = plotAt(index))
+    {
+      plot->setTrackerPosition(_tracker_time);
+      plot->replot();
+    }
+  }
+  for (int index = 0; index < plotCount(); index++)
+  {
+    if (auto panel = mapPanelAt(index))
+    {
+      panel->onTimeUpdated(_tracker_time);
+    }
+  }
+  updateTimelineSlider();
+}
+
+Range PlotDocker::currentTimeViewport() const
+{
+  auto range = _time_viewport.value_or(Range{ 0.0, 1.0 });
+  const double offset = timeOffset();
+  return { range.min + offset, range.max + offset };
+}
+
+bool PlotDocker::hasTimeViewport() const
+{
+  return _time_viewport.has_value();
+}
+
+void PlotDocker::onTimeViewportEdited(PlotWidget* source, Range range)
+{
+  if (_applying_time_viewport || !source || source->isXYPlot() || source->isEmpty())
+  {
+    return;
+  }
+
+  if (_time_viewport && std::abs(_time_viewport->min - range.min) < 1e-9 &&
+      std::abs(_time_viewport->max - range.max) < 1e-9)
+  {
+    return;
+  }
+
+  setTimeViewport(range, source, true);
+}
+
+void PlotDocker::onTimeseriesCurvesDropped(PlotWidget* source, bool plot_was_empty)
+{
+  if (!source || source->isXYPlot() || source->isEmpty())
+  {
+    return;
+  }
+
+  if (!_time_viewport)
+  {
+    auto rect = source->maxZoomRect();
+    setTimeViewport({ std::min(rect.left(), rect.right()), std::max(rect.left(), rect.right()) },
+                    source, true);
+    return;
+  }
+  else
+  {
+    source->applyTimeViewport(*_time_viewport, true);
+    source->replot();
+    refreshSharedTimeAxes();
+    updateTimelineSlider();
+  }
+  emit undoableChange();
+}
+
+void PlotDocker::setTimeViewport(Range range, PlotWidget* source, bool emit_change)
+{
+  if (range.min > range.max)
+  {
+    std::swap(range.min, range.max);
+  }
+  if (std::abs(range.max - range.min) < std::numeric_limits<double>::epsilon())
+  {
+    range.max = range.min + 1.0;
+  }
+
+  _time_viewport = range;
+  applyTimeViewportToPlots(source);
+  updateTimelineSlider();
+  repositionTimelineSlider();
+
+  if (emit_change)
+  {
+    const double offset = timeOffset();
+    emit timeViewportChanged(range.min + offset, range.max + offset);
+    emit undoableChange();
+  }
+}
+
+void PlotDocker::applyTimeViewportToPlots(PlotWidget*)
+{
+  if (!_time_viewport)
+  {
+    return;
+  }
+
+  _applying_time_viewport = true;
+  for (int index = 0; index < plotCount(); index++)
+  {
+    auto plot = plotAt(index);
+    if (plot && !plot->isXYPlot() && !plot->isEmpty())
+    {
+      plot->applyTimeViewport(*_time_viewport, true);
+    }
+  }
+  _applying_time_viewport = false;
+  refreshSharedTimeAxes();
+}
+
+std::optional<Range> PlotDocker::fullTimeseriesRange() const
+{
+  bool found = false;
+  Range range{ std::numeric_limits<double>::max(), std::numeric_limits<double>::lowest() };
+  for (int index = 0; index < dockAreaCount(); index++)
+  {
+    auto dock_widget = dynamic_cast<DockWidget*>(dockArea(index)->currentDockWidget());
+    auto plot = dock_widget ? dock_widget->plotWidget() : nullptr;
+    if (!plot || plot->isXYPlot() || plot->isEmpty())
+    {
+      continue;
+    }
+
+    auto rect = plot->maxZoomRect();
+    range.min = std::min(range.min, std::min(rect.left(), rect.right()));
+    range.max = std::max(range.max, std::max(rect.left(), rect.right()));
+    found = true;
+  }
+  return found ? std::optional<Range>(range) : std::nullopt;
+}
+
+void PlotDocker::updateTimelineSlider()
+{
+  if (!_time_slider)
+  {
+    return;
+  }
+
+  if (!_time_viewport)
+  {
+    _time_slider->hide();
+    return;
+  }
+
+  _time_slider->show();
+  _updating_time_slider = true;
+  const double offset = timeOffset();
+  _time_slider->setLimits(_time_viewport->min + offset, _time_viewport->max + offset, 10000);
+  _time_slider->setRealValue(_tracker_time);
+  _updating_time_slider = false;
+}
+
+void PlotDocker::repositionTimelineSlider()
+{
+  if (!_time_slider)
+  {
+    return;
+  }
+
+  auto plot = firstTimeSeriesPlot();
+  if (!plot || !_time_viewport)
+  {
+    _time_slider->hide();
+    return;
+  }
+
+  const QRect canvas_rect = plot->canvasRectIn(this);
+  if (!canvas_rect.isValid())
+  {
+    _time_slider->hide();
+    return;
+  }
+
+  constexpr int slider_height = 24;
+  const int y = std::max(0, height() - slider_height);
+  _time_slider->setGeometry(canvas_rect.left(), y, canvas_rect.width(), slider_height);
+  _time_slider->show();
+  _time_slider->raise();
+}
+
+PlotWidget* PlotDocker::firstTimeSeriesPlot() const
+{
+  for (int index = 0; index < dockAreaCount(); index++)
+  {
+    auto dock_widget = dynamic_cast<DockWidget*>(dockArea(index)->currentDockWidget());
+    auto plot = dock_widget ? dock_widget->plotWidget() : nullptr;
+    if (plot && !plot->isXYPlot() && !plot->isEmpty())
+    {
+      return plot;
+    }
+  }
+  return nullptr;
+}
+
+double PlotDocker::timeOffset() const
+{
+  if (auto plot = firstTimeSeriesPlot())
+  {
+    return plot->timeOffset();
+  }
+  return 0.0;
+}
+
+void PlotDocker::resizeEvent(QResizeEvent* event)
+{
+  ads::CDockManager::resizeEvent(event);
+  repositionTimelineSlider();
 }
 
 void PlotDocker::on_stylesheetChanged(QString theme)
@@ -540,6 +834,7 @@ DockWidget::~DockWidget()
 DockWidget* DockWidget::splitHorizontal()
 {
   auto new_widget = new DockWidget(_datamap, qobject_cast<QWidget*>(parent()));
+  new_widget->plotWidget()->setModeXY(true);
 
   PlotDocker* parent_docker = static_cast<PlotDocker*>(dockManager());
   auto area = parent_docker->addDockWidget(ads::RightDockWidgetArea, new_widget);
@@ -578,6 +873,7 @@ DockWidget* DockWidget::splitVertical()
 DockWidget* DockWidget::splitHorizontalLocal()
 {
   auto new_widget = new DockWidget(_datamap, qobject_cast<QWidget*>(parent()));
+  new_widget->plotWidget()->setModeXY(true);
 
   PlotDocker* parent_docker = static_cast<PlotDocker*>(dockManager());
   auto area = parent_docker->addDockWidget(ads::RightDockWidgetArea, new_widget, dockAreaWidget());

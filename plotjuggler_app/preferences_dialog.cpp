@@ -52,9 +52,6 @@ PreferencesDialog::PreferencesDialog(QWidget* parent)
   bool autozoom_visibility = settings.value("Preferences::autozoom_visibility", true).toBool();
   ui->checkBoxAutoZoomVisibility->setChecked(autozoom_visibility);
 
-  bool autozoom_curve_added = settings.value("Preferences::autozoom_curve_added", true).toBool();
-  ui->checkBoxAutoZoomAdded->setChecked(autozoom_curve_added);
-
   bool autozoom_filter_applied =
       settings.value("Preferences::autozoom_filter_applied", true).toBool();
   ui->checkBoxAutoZoomFilter->setChecked(autozoom_filter_applied);
@@ -114,7 +111,6 @@ void PreferencesDialog::on_buttonBox_accepted()
   settings.setValue("Preferences::no_splash", ui->checkBoxSkipSplash->isChecked());
   settings.setValue("Preferences::autozoom_visibility",
                     ui->checkBoxAutoZoomVisibility->isChecked());
-  settings.setValue("Preferences::autozoom_curve_added", ui->checkBoxAutoZoomAdded->isChecked());
   settings.setValue("Preferences::autozoom_filter_applied",
                     ui->checkBoxAutoZoomFilter->isChecked());
   settings.setValue("Preferences::truncation_check", ui->checkBoxTruncation->isChecked());

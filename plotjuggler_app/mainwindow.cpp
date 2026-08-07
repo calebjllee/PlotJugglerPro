@@ -287,9 +287,6 @@ MainWindow::MainWindow(const QCommandLineParser& commandline_parser, QWidget* pa
   connect(_curvelist_widget, &CurveListPanel::refreshMathPlot, this,
           &MainWindow::onRefreshCustomPlot);
 
-  connect(ui->timeSlider, &RealSlider::realValueChanged, this,
-          &MainWindow::onTimeSlider_valueChanged);
-
   connect(ui->playbackRate, &QDoubleSpinBox::editingFinished, this,
           [this]() { ui->playbackRate->clearFocus(); });
 
@@ -384,9 +381,6 @@ MainWindow::MainWindow(const QCommandLineParser& commandline_parser, QWidget* pa
 
   bool activate_grid = settings.value("MainWindow.activateGrid", false).toBool();
   ui->buttonActivateGrid->setChecked(activate_grid);
-
-  bool zoom_link_active = settings.value("MainWindow.buttonLink", true).toBool();
-  ui->buttonLink->setChecked(zoom_link_active);
 
   bool ration_active = settings.value("MainWindow.buttonRatio", true).toBool();
   ui->buttonRatio->setChecked(ration_active);
@@ -573,10 +567,6 @@ void MainWindow::onTrackerMovedFromWidget(QPointF relative_pos)
 {
   _tracker_time = relative_pos.x() + _time_offset.get();
 
-  auto prev = ui->timeSlider->blockSignals(true);
-  ui->timeSlider->setRealValue(_tracker_time);
-  ui->timeSlider->blockSignals(prev);
-
   onTrackerTimeUpdated(_tracker_time, true);
 }
 
@@ -589,6 +579,7 @@ void MainWindow::onTimeSlider_valueChanged(double abs_time)
 void MainWindow::onTrackerTimeUpdated(double absolute_time, bool do_replot)
 {
   _tracker_delay.triggerSignal(100);
+  updateTimeSlider();
 
   for (auto& it : _plugin_manager.statePublishers())
   {
@@ -961,8 +952,6 @@ void MainWindow::onPlotAdded(PlotWidget* plot)
     this->forEachWidget(visitor);
   });
 
-  connect(plot, &PlotWidget::rectChanged, this, &MainWindow::onPlotZoomChanged);
-
   plot->setTrackerPosition(_tracker_time);
   plot->on_changeTimeOffset(_time_offset.get());
   plot->on_changeDateTimeScale(ui->buttonUseDateTime->isChecked());
@@ -1019,32 +1008,17 @@ void MainWindow::onMapPanelAdded(MapDockPanel* panel)
   }
 }
 
-void MainWindow::onPlotZoomChanged(PlotWidget* modified_plot, QRectF new_range)
-{
-  if (ui->buttonLink->isChecked())
-  {
-    auto visitor = [=](PlotWidget* plot) {
-      if (plot != modified_plot && !plot->isEmpty() && !plot->isXYPlot() &&
-          plot->isZoomLinkEnabled())
-      {
-        QRectF bound_act = plot->currentBoundingRect();
-        bound_act.setLeft(new_range.left());
-        bound_act.setRight(new_range.right());
-        plot->setZoomRectangle(bound_act, false);
-        plot->on_zoomOutVertical_triggered(false);
-        plot->replot();
-      }
-    };
-    this->forEachWidget(visitor);
-  }
-
-  onUndoableChange();
-}
-
 void MainWindow::onPlotTabAdded(PlotDocker* docker)
 {
   connect(docker, &PlotDocker::plotWidgetAdded, this, &MainWindow::onPlotAdded);
   connect(docker, &PlotDocker::mapPanelAdded, this, &MainWindow::onMapPanelAdded);
+  connect(docker, &PlotDocker::trackerTimeEdited, this, &MainWindow::onTimeSlider_valueChanged);
+  connect(docker, &PlotDocker::timeViewportChanged, this,
+          [this](double min_time, double max_time) {
+            _tracker_time = std::max(min_time, std::min(_tracker_time, max_time));
+            onTrackerTimeUpdated(_tracker_time, true);
+            onUndoableChange();
+          });
 
   connect(this, &MainWindow::stylesheetChanged, docker, &PlotDocker::on_stylesheetChanged);
 
@@ -1735,7 +1709,7 @@ bool MainWindow::loadDataFromFiles(QStringList filenames)
   if (loaded_filenames.size() > 0)
   {
     updateRecentDataMenu(loaded_filenames);
-    linkedZoomOut();
+    updateTimeSlider();
     return true;
   }
   return false;
@@ -1890,7 +1864,7 @@ std::unordered_set<std::string> MainWindow::loadDataFromFile(const FileLoadInfo&
   forEachWidget([](PlotWidget* plot) { plot->updateCurves(true); });
 
   updateDataAndReplot(true);
-  ui->timeSlider->setRealValue(ui->timeSlider->getMinimum());
+  updateTimeSlider();
 
   return added_names;
 }
@@ -2210,7 +2184,6 @@ void MainWindow::on_stylesheetChanged(QString theme)
   ui->buttonLoadLayout->setIcon(LoadSvg(":/resources/svg/import.svg", theme));
   ui->buttonSaveLayout->setIcon(LoadSvg(":/resources/svg/export.svg", theme));
 
-  ui->buttonLink->setIcon(LoadSvg(":/resources/svg/link.svg", theme));
   ui->buttonRemoveTimeOffset->setIcon(LoadSvg(":/resources/svg/t0.svg", theme));
   ui->buttonLegend->setIcon(LoadSvg(":/resources/svg/legend.svg", theme));
   ui->buttonReferencePoint->setIcon(LoadSvg(":/resources/svg/reference_line.svg", theme));
@@ -2638,70 +2611,9 @@ bool MainWindow::loadLayoutFromFile(QString filename)
 
   xmlLoadState(domDocument);
 
-  linkedZoomOut();
-
   _undo_states.clear();
   _undo_states.push_back(domDocument);
   return true;
-}
-
-void MainWindow::linkedZoomOut()
-{
-  if (ui->buttonLink->isChecked())
-  {
-    for (const auto& it : TabbedPlotWidget::instances())
-    {
-      auto tabs = it.second->tabWidget();
-      for (int t = 0; t < tabs->count(); t++)
-      {
-        if (PlotDocker* matrix = dynamic_cast<PlotDocker*>(tabs->widget(t)))
-        {
-          bool first = true;
-          Range range;
-          // find the ideal zoom
-          for (int index = 0; index < matrix->plotCount(); index++)
-          {
-            PlotWidget* plot = matrix->plotAt(index);
-            if (plot->isEmpty())
-            {
-              continue;
-            }
-
-            auto rect = plot->maxZoomRect();
-            if (first)
-            {
-              range.min = rect.left();
-              range.max = rect.right();
-              first = false;
-            }
-            else
-            {
-              range.min = std::min(rect.left(), range.min);
-              range.max = std::max(rect.right(), range.max);
-            }
-          }
-
-          for (int index = 0; index < matrix->plotCount() && !first; index++)
-          {
-            PlotWidget* plot = matrix->plotAt(index);
-            if (plot->isEmpty())
-            {
-              continue;
-            }
-            QRectF bound_act = plot->maxZoomRect();
-            bound_act.setLeft(range.min);
-            bound_act.setRight(range.max);
-            plot->setZoomRectangle(bound_act, false);
-            plot->replot();
-          }
-        }
-      }
-    }
-  }
-  else
-  {
-    this->forEachWidget([](PlotWidget* plot) { plot->zoomOut(false); });
-  }
 }
 
 void MainWindow::on_tabbedAreaDestroyed(QObject* object)
@@ -2771,12 +2683,17 @@ void MainWindow::forEachMapPanel(std::function<void(MapDockPanel*)> op)
 
 void MainWindow::updateTimeSlider()
 {
-  auto range = calculateVisibleRangeX();
-
-  ui->timeSlider->setLimits(std::get<0>(range), std::get<1>(range), std::get<2>(range));
-
-  _tracker_time = std::max(_tracker_time, ui->timeSlider->getMinimum());
-  _tracker_time = std::min(_tracker_time, ui->timeSlider->getMaximum());
+  for (const auto& it : TabbedPlotWidget::instances())
+  {
+    auto tabs = it.second->tabWidget();
+    for (int t = 0; t < tabs->count(); t++)
+    {
+      if (auto docker = dynamic_cast<PlotDocker*>(tabs->widget(t)))
+      {
+        docker->setTrackerTime(_tracker_time);
+      }
+    }
+  }
 }
 
 void MainWindow::updateTimeOffset()
@@ -2868,8 +2785,6 @@ void MainWindow::updateDataAndReplot(bool replot_hidden_tabs)
     updateTimeOffset();
     updateTimeSlider();
   }
-  //--------------------------------
-  linkedZoomOut();
 }
 
 void MainWindow::on_streamingSpinBox_valueChanged(int value)
@@ -3112,7 +3027,6 @@ void MainWindow::closeEvent(QCloseEvent* event)
   settings.setValue("MainWindow.activateGrid", ui->buttonActivateGrid->isChecked());
   settings.setValue("MainWindow.removeTimeOffset", ui->buttonRemoveTimeOffset->isChecked());
   settings.setValue("MainWindow.dateTimeDisplay", ui->buttonUseDateTime->isChecked());
-  settings.setValue("MainWindow.buttonLink", ui->buttonLink->isChecked());
   settings.setValue("MainWindow.buttonRatio", ui->buttonRatio->isChecked());
 
   settings.setValue("MainWindow.streamingBufferValue", ui->streamingSpinBox->value());
@@ -3171,19 +3085,32 @@ void MainWindow::onPlaybackLoop()
   _prev_publish_time = QDateTime::currentDateTime();
   delta_ms = std::max((qint64)_publish_timer->interval(), delta_ms);
 
+  double min_time = 0.0;
+  double max_time = 1.0;
+  if (auto docker = _main_tabbed_widget ? _main_tabbed_widget->currentTab() : nullptr;
+      docker && docker->hasTimeViewport())
+  {
+    auto range = docker->currentTimeViewport();
+    min_time = range.min;
+    max_time = range.max;
+  }
+  else
+  {
+    auto range = calculateVisibleRangeX();
+    min_time = std::get<0>(range);
+    max_time = std::get<1>(range);
+  }
+
   _tracker_time += delta_ms * 0.001 * ui->playbackRate->value();
-  if (_tracker_time >= ui->timeSlider->getMaximum())
+  if (_tracker_time >= max_time)
   {
     if (!ui->playbackLoop->isChecked())
     {
       ui->buttonPlay->setChecked(false);
     }
-    _tracker_time = ui->timeSlider->getMinimum();
+    _tracker_time = min_time;
   }
-  //////////////////
-  auto prev = ui->timeSlider->blockSignals(true);
-  ui->timeSlider->setRealValue(_tracker_time);
-  ui->timeSlider->blockSignals(prev);
+  updateTimeSlider();
 
   //////////////////
   updatedDisplayTime();
@@ -3720,8 +3647,7 @@ void MainWindow::on_actionPreferences_triggered()
 
 void MainWindow::on_playbackStep_valueChanged(double step)
 {
-  ui->timeSlider->setFocus();
-  ui->timeSlider->setRealStepValue(step);
+  Q_UNUSED(step);
 }
 
 void MainWindow::on_actionLoadStyleSheet_triggered()
@@ -3777,7 +3703,17 @@ void MainWindow::on_buttonLegend_clicked()
 
 void MainWindow::on_buttonZoomOut_clicked()
 {
-  linkedZoomOut();
+  for (const auto& it : TabbedPlotWidget::instances())
+  {
+    auto tabs = it.second->tabWidget();
+    for (int t = 0; t < tabs->count(); t++)
+    {
+      if (auto docker = dynamic_cast<PlotDocker*>(tabs->widget(t)))
+      {
+        docker->zoomOut();
+      }
+    }
+  }
   onUndoableChange();
 }
 

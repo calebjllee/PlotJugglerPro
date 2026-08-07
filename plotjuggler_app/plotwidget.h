@@ -36,10 +36,12 @@
 #include "plot_background.h"
 
 class StatisticsDialog;
+class DockWidget;
 
 class PlotWidget : public PlotWidgetBase
 {
   Q_OBJECT
+  friend class DockWidget;
 
 public:
   PlotWidget(PlotDataMapRef& datamap, QWidget* parent);
@@ -88,8 +90,6 @@ public:
 
   void removeCurve(const QString& title) override;
 
-  bool isZoomLinkEnabled() const;
-
   void setStatisticsTitle(QString title);
 
   void updateStatistics(bool forceUpdate = false);
@@ -99,6 +99,9 @@ public:
   void setBottomAxisVisible(bool visible);
   double yAxisExtent(QwtAxisId axisId) const;
   void setYAxisMinimumExtent(QwtAxisId axisId, double extent);
+  Range currentTimeViewport() const;
+  void applyTimeViewport(Range range, bool do_replot = true);
+  QRect canvasRectIn(QWidget* parent) const;
 
 protected:
   PlotDataMapRef& _mapped_data;
@@ -112,7 +115,8 @@ protected:
 
 signals:
   void swapWidgetsRequested(PlotWidget* source, PlotWidget* destination);
-  void rectChanged(PlotWidget* self, QRectF rect);
+  void timeViewportEdited(PlotWidget* self, Range range);
+  void timeseriesCurvesDropped(PlotWidget* self, bool plot_was_empty);
   void undoableChange();
   void createMapSplitRequested();
   void convertToMapPanelRequested();
@@ -273,6 +277,7 @@ private:
   void rescaleEqualAxisScaling();
   Range autoFitRangeY(Range range_X, QwtAxisId y_axis) const;
   void applyAutoFitY(Range range_X);
+  void autoZoomY();
   bool hasVisibleRightAxisCurves() const;
 
   void setAxisScale(QwtAxisId axisId, double min, double max);

@@ -220,7 +220,7 @@ void PlotWidget::buildActions()
   connect(_action_convert_to_map, &QAction::triggered, this,
           [this]() { emit convertToMapPanelRequested(); });
 
-  _action_split_horizontal = new QAction("Add Panel &Right", this);
+  _action_split_horizontal = new QAction("Add XY Panel &Right", this);
   connect(_action_split_horizontal, &QAction::triggered, this, &PlotWidget::splitHorizontal);
 
   _action_split_vertical = new QAction("Add Panel &Below", this);
@@ -616,7 +616,8 @@ void PlotWidget::onDropEvent(QDropEvent*)
 {
   bool curves_changed = false;
 
-  bool noCurves = curveList().empty();
+  const bool plot_was_empty = curveList().empty();
+  bool dropped_timeseries = false;
 
   if (_dragging.mode == DragInfo::CURVES)
   {
@@ -626,6 +627,7 @@ void PlotWidget::onDropEvent(QDropEvent*)
       scatter_count += _mapped_data.scatter_xy.count(curve_name.toStdString());
     }
     bool scatter_curves = (scatter_count == _dragging.curves.size());
+    dropped_timeseries = !scatter_curves;
     if (scatter_count > 0 && !scatter_curves)
     {
       _dragging.mode = DragInfo::NONE;
@@ -696,15 +698,14 @@ void PlotWidget::onDropEvent(QDropEvent*)
     emit curvesDropped();
     emit curveListChanged();
 
-    QSettings settings;
-    bool autozoom_curve_added = settings.value("Preferences::autozoom_curve_added", true).toBool();
-    if (autozoom_curve_added || noCurves)
+    if (dropped_timeseries)
     {
-      zoomOut(autozoom_curve_added);
+      updateMaximumZoomArea();
+      emit timeseriesCurvesDropped(this, plot_was_empty);
     }
     else
     {
-      replot();
+      zoomOut(true);
     }
   }
   _dragging.mode = DragInfo::NONE;
@@ -1149,10 +1150,45 @@ void PlotWidget::setZoomRectangle(QRectF rect, bool emit_signal)
     }
     else
     {
-      emit rectChanged(this, currentBoundingRect());
+      emit timeViewportEdited(this, currentTimeViewport());
     }
   }
   updateStatistics();
+}
+
+Range PlotWidget::currentTimeViewport() const
+{
+  const auto rect = currentBoundingRect();
+  return { std::min(rect.left(), rect.right()), std::max(rect.left(), rect.right()) };
+}
+
+void PlotWidget::applyTimeViewport(Range range, bool do_replot)
+{
+  if (isXYPlot())
+  {
+    return;
+  }
+
+  setAxisScale(QwtPlot::xBottom, range.min, range.max);
+  applyAutoFitY(range);
+  qwtPlot()->updateAxes();
+  updateStatistics();
+  if (do_replot)
+  {
+    replot();
+  }
+}
+
+QRect PlotWidget::canvasRectIn(QWidget* parent) const
+{
+  auto canvas = qwtPlot()->canvas();
+  if (!canvas || !parent)
+  {
+    return {};
+  }
+
+  const QPoint top_left = parent->mapFromGlobal(canvas->mapToGlobal(canvas->rect().topLeft()));
+  return QRect(top_left, canvas->rect().size());
 }
 
 void PlotWidget::reloadPlotData()
@@ -1422,6 +1458,16 @@ void PlotWidget::applyAutoFitY(Range range_X)
   setAxisScale(QwtPlot::yRight, rangeY_right.min, rangeY_right.max);
 }
 
+void PlotWidget::autoZoomY()
+{
+  const QRectF rect = currentBoundingRect();
+  const double left = std::min(rect.left(), rect.right());
+  const double right = std::max(rect.left(), rect.right());
+  applyAutoFitY({ left, right });
+  qwtPlot()->updateAxes();
+  updateStatistics();
+}
+
 bool PlotWidget::hasVisibleRightAxisCurves() const
 {
   for (const auto& curve_info : curveList())
@@ -1609,9 +1655,8 @@ void PlotWidget::onShowDataStatistics()
 
   auto setToNull = [this]() { _statistics_dialog = nullptr; };
 
-  connect(this, &PlotWidget::rectChanged, _statistics_dialog, [this](PlotWidget*, QRectF rect) {
-    _statistics_dialog->update({ rect.left(), rect.right() });
-  });
+  connect(this, &PlotWidget::timeViewportEdited, _statistics_dialog,
+          [this](PlotWidget*, Range range) { _statistics_dialog->update(range); });
 
   connect(_statistics_dialog, &QDialog::rejected, this, setToNull);
 
@@ -1622,18 +1667,9 @@ void PlotWidget::on_externallyResized(const QRectF& rect)
 {
   if (!isXYPlot())
   {
-    setZoomRectangle(rect, false);
-    if (isZoomLinkEnabled())
-    {
-      emit rectChanged(this, currentBoundingRect());
-    }
+    const Range range = { std::min(rect.left(), rect.right()), std::max(rect.left(), rect.right()) };
+    emit timeViewportEdited(this, range);
     return;
-  }
-
-  QRectF current_rect = currentBoundingRect();
-  if (current_rect != rect && isZoomLinkEnabled())
-  {
-    emit rectChanged(this, rect);
   }
 }
 
@@ -1669,6 +1705,17 @@ void PlotWidget::on_zoomOutHorizontal_triggered(bool emit_signal)
 
 void PlotWidget::on_zoomOutVertical_triggered(bool emit_signal)
 {
+  if (!isXYPlot())
+  {
+    autoZoomY();
+    if (emit_signal)
+    {
+      emit undoableChange();
+    }
+    replot();
+    return;
+  }
+
   QRectF rect = currentBoundingRect();
   this->setZoomRectangle(rect, emit_signal);
   qwtPlot()->updateAxes();
@@ -1969,19 +2016,6 @@ void PlotWidget::setAxisScale(QwtAxisId axisId, double min, double max)
   }
 }
 
-bool PlotWidget::isZoomLinkEnabled() const
-{
-  //  for (const auto& it : curveList())
-  //  {
-  //    auto series = dynamic_cast<QwtSeriesWrapper*>(it.curve->data());
-  //    if (series->plotData()->attribute(PJ::DISABLE_LINKED_ZOOM).toBool())
-  //    {
-  //      return false;
-  //    }
-  //  }
-  return true;
-}
-
 bool PlotWidget::canvasEventFilter(QEvent* event)
 {
   switch (event->type())
@@ -2064,7 +2098,14 @@ bool PlotWidget::canvasEventFilter(QEvent* event)
                   settings.value("Preferences::autozoom_visibility", true).toBool();
               if (autozoom_visibility)
               {
-                resetZoom();
+                if (isXYPlot())
+                {
+                  resetZoom();
+                }
+                else
+                {
+                  autoZoomY();
+                }
               }
               updateRightAxisVisibility();
               emit undoableChange();

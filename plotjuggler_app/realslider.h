@@ -8,6 +8,9 @@
 #define REALSLIDER_H
 
 #include <QSlider>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
 class RealSlider : public QSlider
 {
@@ -54,22 +57,36 @@ inline RealSlider::RealSlider(QWidget* parent) : QSlider(parent)
 inline void RealSlider::setLimits(double min, double max, int steps)
 {
   _min_value = min;
-  _max_value = max;
-  QSlider::setRange(0, steps);
+  _max_value = std::max(max, min + std::numeric_limits<double>::epsilon());
+  QSlider::setRange(0, std::max(1, steps));
+}
+
+inline double RealSlider::getValue() const
+{
+  int min = minimum();
+  int max = maximum();
+  if (max <= min)
+  {
+    return _min_value;
+  }
+  const double ratio = (double)(value() - min) / (double)(max - min);
+  return (_max_value - _min_value) * ratio + _min_value;
 }
 
 inline void RealSlider::setRealValue(double val)
 {
   val = std::max(val, _min_value);
   val = std::min(val, _max_value);
-  const double ratio = (val - _min_value) / (_max_value - _min_value);
+  const double denom = _max_value - _min_value;
+  const double ratio = denom > 0.0 ? (val - _min_value) / denom : 0.0;
   long pos = std::round((double)(maximum() - minimum()) * ratio + minimum());
   QSlider::setValue(pos);
 }
 
 inline void RealSlider::setRealStepValue(double step)
 {
-  const double ratio = (_max_value - _min_value) / (double)(maximum() - minimum());
+  const int steps = std::max(1, maximum() - minimum());
+  const double ratio = (_max_value - _min_value) / (double)steps;
   int new_step = std::max(1, static_cast<int>(std::round(step / ratio)));
   QSlider::setSingleStep(new_step);
 }
@@ -78,7 +95,12 @@ inline void RealSlider::onValueChanged(int value)
 {
   int min = minimum();
   int max = maximum();
-  const double ratio = (double)value / (double)(max - min);
+  if (max <= min)
+  {
+    emit realValueChanged(_min_value);
+    return;
+  }
+  const double ratio = (double)(value - min) / (double)(max - min);
   double posX = (_max_value - _min_value) * ratio + _min_value;
   emit realValueChanged(posX);
 }

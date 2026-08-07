@@ -1,48 +1,90 @@
-Map Panel Recap (Current)
+PlotJugglerPro Branch Notes
 
-- Map is a native dock/split panel in the main plot layout (same split workflow as standard plots), not a toolbox window.
-- Plot context menu now includes `Add Map View` (creates a new split map panel) and existing XY-only `Convert to Map panel`.
-- Map panel state (lat/lon selections) is persisted in dock XML and restored with layout loading.
-- Map panel receives time updates during tracker moves/playback and updates marker position in sync.
+Current Direction
 
-UX and Interaction Changes
+- This branch is no longer just a map extension. It is a local PlotJugglerPro workflow branch with:
+  - native dock/split map panels,
+  - lazy-loading data support, including MF4 work,
+  - x-only navigation for time-series plots,
+  - auto-Y refit behavior,
+  - one master time-series column per tab,
+  - deterministic Y-axis/canvas alignment across stacked time-series plots,
+  - a per-tab timeline slider aligned under the time-series canvas.
+- Prefer simplifying old optional sync behavior instead of preserving compatibility. This is beta development.
 
-- Latitude/Longitude autodetection is intentionally simple: keyword match for `Latitude` and `Longitude` only.
-- Removed the auto-detect checkbox; detection now runs as part of refresh/fit flow.
-- Top-right button is `Fit to View` and performs refresh + detect + route fit.
-- `Fit to View` button includes `zoom_max` icon.
-- Right-click inside the map is forwarded to app code (WebEngine default context menu suppressed).
-- Map right-click menu now includes:
-	- `Fit to View` (icon: `zoom_max.svg`)
-	- `Split Horizontally` (icon: `add_column.svg`)
-	- `Split Vertically` (icon: `add_row.svg`)
-	- `Add Map View` (icon: `scatter.svg`)
+Time-Series Layout Model
+
+- A `PlotDocker` tab owns one master time viewport for time-series plots.
+- Non-XY time-series plots in the same tab must always share the same X range.
+- Time-series plots are added vertically into the master column.
+- Right-side panels are for XY plots or map views only.
+- Adding a time-series signal preserves the tab X viewport and recalculates that plot's Y range.
+- The first time-series signal in a fresh tab initializes the tab viewport from the full data range.
+- Y-axis alignment is handled by `PlotDocker`, not by individual plots:
+  - reset axis extents,
+  - update/measure labels,
+  - apply the max left/right Y extent to the vertical time-series stack,
+  - use a minimum left-axis extent so short labels do not collapse the canvas.
+- The old zoom link button and linked-zoom fanout were removed. Do not reintroduce `buttonLink`, `linkedZoomOut()`, or per-plot linked-zoom opt-outs.
+
+Timeline and Tracker
+
+- The timeline slider is now per `PlotDocker` tab, not the old global main-window slider.
+- `MainWindow` remains the owner of absolute tracker/playback time.
+- `PlotDocker` stores the time viewport in plot-relative coordinates, but exposes slider/playback bounds in absolute time by adding the plot time offset.
+- Tracker movement, playback, and the tab timeline slider must stay in sync.
+- After adding signals or changing layout/axis geometry, refresh shared time axes and tracker position so the vertical "now" line does not wait for a zoom/pan to correct itself.
+
+Map Panel
+
+- Map is a native dock/split panel in the main plot layout, not a toolbox window.
+- Plot context menu includes `Add Map View` and XY-only `Convert to Map panel`.
+- Map panel state, including latitude/longitude selections, is persisted in dock XML and restored with layouts.
+- Map receives tracker/playback time updates and moves the marker in sync.
+- Latitude/longitude autodetection is intentionally simple: keyword match for `Latitude` and `Longitude` only.
+- `Fit to View` refreshes data, runs detection, and fits the route.
+- Right-click inside the map is forwarded to app code; WebEngine's default context menu is suppressed.
+- Map right-click menu includes:
+  - `Fit to View` (`zoom_max.svg`)
+  - `Split Horizontally` (`add_column.svg`)
+  - `Split Vertically` (`add_row.svg`)
+  - `Add Map View` (`scatter.svg`)
+
+Build and Launch
+
+- See `PLOTJUGGLER_PRO_BUILD.md` for local Windows build and launch notes.
+- The configured build directory is `build\PlotJugglerPro`.
+- Fast compile check:
+
+```powershell
+cmake --build build\PlotJugglerPro --config Release --target plotjuggler
+```
+
+- Full installed runnable layout:
+
+```powershell
+cmake --build build\PlotJugglerPro --config Release --target install
+```
+
+- If `install\bin\plotjuggler.exe` is running, the install target can fail with permission denied while copying the exe.
 
 Key Files
 
-- `plotjuggler_app/map_dock_panel.h`
-- `plotjuggler_app/map_dock_panel.cpp`
 - `plotjuggler_app/plot_docker.h`
 - `plotjuggler_app/plot_docker.cpp`
 - `plotjuggler_app/plotwidget.h`
 - `plotjuggler_app/plotwidget.cpp`
+- `plotjuggler_app/mainwindow.cpp`
+- `plotjuggler_app/mainwindow.ui`
+- `plotjuggler_app/realslider.h`
+- `plotjuggler_app/map_dock_panel.h`
+- `plotjuggler_app/map_dock_panel.cpp`
 - `plotjuggler_app/CMakeLists.txt`
 
-Notes
+Map Tile Notes
 
-- WebEngine remains optional (`PJ_HAS_WEBENGINE`); map panel falls back to informational text when unavailable.
-- Tile provider is configurable via environment variables in map HTML generation:
-	- `PJ_MAP_TILES_URL`
-	- `PJ_MAP_ATTRIBUTION`
-- Avoid defaulting to `tile.openstreetmap.org` in app code to prevent policy/403 issues.
-
-Building
-
-cmake -S . -B build\PlotJuggler-webmap `
->>   -G "Visual Studio 17 2022" -A x64 `
->>   -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake `
->>   -DCMAKE_INSTALL_PREFIX="$PWD\install" `
->>   -DQt5_DIR="C:/Qt/5.15.2/msvc2019_64/lib/cmake/Qt5" `
->>   -DQt5WebEngineWidgets_DIR="C:/Qt/5.15.2/msvc2019_64/lib/cmake/Qt5WebEngineWidgets"
-
-cmake --build build\PlotJuggler-webmap --config Release --target install
+- WebEngine remains optional through `PJ_HAS_WEBENGINE`; the map panel shows informational fallback text when unavailable.
+- Tile provider is configured with:
+  - `PJ_MAP_TILES_URL`
+  - `PJ_MAP_ATTRIBUTION`
+- Avoid defaulting app code to `tile.openstreetmap.org`; it can violate policy or return 403s.
