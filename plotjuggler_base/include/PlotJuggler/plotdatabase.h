@@ -52,7 +52,11 @@ enum PlotAttribute
 
   // Color of the curve in the plot.
   // Type: QColor
-  COLOR_HINT
+  COLOR_HINT,
+
+  // Optional map of numeric values to display labels.
+  // Type: QVariantMap
+  VALUE_LABELS
 };
 
 using Attributes = std::unordered_map<PlotAttribute, QVariant>;
@@ -68,6 +72,8 @@ inline bool CheckType(PlotAttribute attr, const QVariant& value)
       return value.type() == QVariant::Bool;
     case TOOL_TIP:
       return value.type() == QVariant::String;
+    case VALUE_LABELS:
+      return value.type() == QVariant::Map;
   }
   return false;
 }

@@ -72,6 +72,7 @@ std::optional<QPointF> QwtTimeseries::sampleFromTime(double t)
 TransformedTimeseries::TransformedTimeseries(const PlotData* source_data)
   : QwtTimeseries(&_dst_data), _dst_data(source_data->plotName(), {}), _src_data(source_data)
 {
+  _dst_data.attributes() = source_data->attributes();
 }
 
 TransformFunction::Ptr TransformedTimeseries::transform()
@@ -106,6 +107,7 @@ void TransformedTimeseries::updateCache(bool reset_old_data)
 {
   if (_transform)
   {
+    _dst_data.attributes().erase(PJ::VALUE_LABELS);
     if (reset_old_data)
     {
       _dst_data.clear();
@@ -116,6 +118,7 @@ void TransformedTimeseries::updateCache(bool reset_old_data)
   }
   else
   {
+    _dst_data.attributes() = _src_data->attributes();
     // TODO: optimize ??
     _dst_data.clear();
     for (size_t i = 0; i < _src_data->size(); i++)

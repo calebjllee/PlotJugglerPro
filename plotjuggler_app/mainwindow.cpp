@@ -123,6 +123,7 @@ except Exception as exc:
 
 samples = np.asarray(getattr(signal, "samples", []))
 timestamps = np.asarray(getattr(signal, "timestamps", []), dtype=float)
+decoded_samples = None
 
 if samples.ndim != 1 or timestamps.ndim != 1 or len(samples) != len(timestamps):
     print(json.dumps({
@@ -133,7 +134,13 @@ if samples.ndim != 1 or timestamps.ndim != 1 or len(samples) != len(timestamps):
 
 try:
     if samples.dtype.kind not in "buif":
-        raise TypeError("non-numeric channel")
+        decoded_samples = samples
+        raw_signal = mdf.get(group=group_index, index=channel_index, raw=True)
+        samples = np.asarray(getattr(raw_signal, "samples", []))
+        if samples.ndim != 1 or len(samples) != len(timestamps):
+            raise TypeError("raw channel does not match decoded signal")
+        if samples.dtype.kind not in "buif":
+            raise TypeError("raw channel is non-numeric")
     samples = samples.astype(float, copy=False)
 except Exception:
     print(json.dumps({
@@ -143,6 +150,7 @@ except Exception:
     sys.exit(5)
 
 loaded_points = 0
+value_labels = {}
 for start in range(0, len(samples), chunk_size):
     end = min(start + chunk_size, len(samples))
     t_chunk = timestamps[start:end]
@@ -155,6 +163,16 @@ for start in range(0, len(samples), chunk_size):
     v_out = v_chunk[mask].astype(float, copy=False).tolist()
     loaded_points += len(v_out)
 
+    if decoded_samples is not None:
+        decoded_chunk = decoded_samples[start:end][mask]
+        for raw_value, decoded_value in zip(v_out, decoded_chunk):
+            if isinstance(decoded_value, bytes):
+                decoded_text = decoded_value.decode("utf-8", errors="replace")
+            else:
+                decoded_text = str(decoded_value)
+            if decoded_text and decoded_text.lower() != "nan":
+                value_labels["%g" % raw_value] = decoded_text
+
     print(json.dumps({
         "type": "chunk",
         "t": t_out,
@@ -163,7 +181,8 @@ for start in range(0, len(samples), chunk_size):
 
 print(json.dumps({
     "type": "done",
-    "points": loaded_points
+    "points": loaded_points,
+    "value_labels": value_labels
 }), flush=True)
 )PY");
 }
@@ -1492,6 +1511,7 @@ bool MainWindow::hydrateLazyMf4Series(const std::string& curve_name, LazyMf4Seri
   QByteArray pending_stdout;
   QString error_message;
   size_t loaded_points = 0;
+  QVariantMap value_labels;
 
   auto append_chunk = [&](const QJsonObject& object) {
     const QJsonArray timestamps = object.value(QStringLiteral("t")).toArray();
@@ -1529,6 +1549,18 @@ bool MainWindow::hydrateLazyMf4Series(const std::string& curve_name, LazyMf4Seri
     if (type == QStringLiteral("chunk"))
     {
       append_chunk(object);
+    }
+    else if (type == QStringLiteral("done"))
+    {
+      const QJsonObject labels = object.value(QStringLiteral("value_labels")).toObject();
+      for (auto it = labels.constBegin(); it != labels.constEnd(); ++it)
+      {
+        const QString label = it.value().toString();
+        if (!label.isEmpty())
+        {
+          value_labels.insert(it.key(), label);
+        }
+      }
     }
     return true;
   };
@@ -1616,6 +1648,10 @@ bool MainWindow::hydrateLazyMf4Series(const std::string& curve_name, LazyMf4Seri
           .arg(info.sample_count)
           .arg(info.unit.isEmpty() ? QStringLiteral("-") : info.unit));
   series_it->second.setAttribute(PJ::ITALIC_FONTS, false);
+  if (!value_labels.isEmpty())
+  {
+    series_it->second.setAttribute(PJ::VALUE_LABELS, value_labels);
+  }
 
   _curvelist_widget->refreshColumns();
   updateTimeOffset();

@@ -11,9 +11,11 @@
 #include "qwt_scale_map.h"
 #include "qwt_symbol.h"
 #include "qwt_text.h"
+#include "timeseries_qwt.h"
 #include <qevent.h>
 #include <QFontDatabase>
 #include <QSettings>
+#include <QVariantMap>
 
 struct compareX
 {
@@ -22,6 +24,40 @@ struct compareX
     return (x < pos.x());
   }
 };
+
+QString labelForCurveValue(const QwtPlotCurve* curve, double value)
+{
+  const auto* series = dynamic_cast<const QwtSeriesWrapper*>(curve->data());
+  if (!series || !series->plotData())
+  {
+    return {};
+  }
+
+  const QVariant labels_attribute = series->plotData()->attribute(PJ::VALUE_LABELS);
+  if (!labels_attribute.isValid())
+  {
+    return {};
+  }
+
+  const QVariantMap labels = labels_attribute.toMap();
+  auto label_it = labels.find(QString::number(value, 'g', 15));
+  if (label_it == labels.end())
+  {
+    label_it = labels.find(QString::number(value, 'g', 6));
+  }
+  return label_it == labels.end() ? QString() : label_it.value().toString();
+}
+
+QString formattedCurveValue(const QwtPlotCurve* curve, double value, int precision)
+{
+  QString value_text = QString::number(value, 'f', precision);
+  const QString label = labelForCurveValue(curve, value);
+  if (!label.isEmpty())
+  {
+    value_text += QStringLiteral(" (%1)").arg(label.toHtmlEscaped());
+  }
+  return value_text;
+}
 
 CurveTracker::CurveTracker(QwtPlot* plot, QColor color) : QObject(plot), _plot(plot), _param(VALUE)
 {
@@ -162,7 +198,7 @@ void CurveTracker::setPosition(const QPointF& tracker_position)
       visible_points++;
       double value = point.y();
       LineParts parts;
-      parts.value = QString::number(value, 'f', prec);
+      parts.value = formattedCurveValue(curve, value, prec);
       if (maybe_reference)
       {
         auto delta_str = QString::number(value - maybe_reference->y(), 'f', prec);

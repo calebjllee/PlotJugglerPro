@@ -57,6 +57,16 @@ def is_numeric_dtype(dtype_fmt):
     except Exception:
         return False
 
+def has_text_conversion(channel):
+    conversion = getattr(channel, "conversion", None)
+    if conversion is None:
+        return False
+    for name in dir(conversion):
+        if name.startswith("text_") or name.startswith("upper_") or name.startswith("lower_"):
+            return True
+    referenced = getattr(conversion, "referenced_blocks", None)
+    return bool(referenced)
+
 try:
     mdf = MDF(filename)
 except Exception as exc:
@@ -79,7 +89,7 @@ for group_index, group in enumerate(mdf.groups):
             continue
         if getattr(channel, "channel_type", 0) != 0:
             continue
-        if not is_numeric_dtype(getattr(channel, "dtype_fmt", "")):
+        if not is_numeric_dtype(getattr(channel, "dtype_fmt", "")) and not has_text_conversion(channel):
             continue
 
         raw_name = getattr(channel, "name", "") or "unnamed"

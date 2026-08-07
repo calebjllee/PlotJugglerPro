@@ -22,6 +22,7 @@
 #include <QSettings>
 #include <QSvgGenerator>
 #include <QClipboard>
+#include <QVariantMap>
 #include <iostream>
 #include <limits>
 #include <set>
@@ -47,6 +48,7 @@
 #include "plotzoomer.h"
 #include "plotmagnifier.h"
 #include "plotlegend.h"
+#include "timeseries_qwt.h"
 
 #include "PlotJuggler/save_plot.h"
 #include "PlotJuggler/svg_util.h"
@@ -72,6 +74,39 @@ const double MAX_DOUBLE = std::numeric_limits<double>::max() / 2;
 
 static bool if_xy_plot_failed_show_dialog = true;
 static const char* kCompactMenuIconStyle = "QMenu::icon { width: 12px; }";
+
+namespace
+{
+
+QString formattedCurveValue(const QwtPlotCurve* curve, double value, int precision)
+{
+  QString value_text = QString::number(value, 'f', precision);
+  const auto* series = dynamic_cast<const QwtSeriesWrapper*>(curve->data());
+  if (!series || !series->plotData())
+  {
+    return value_text;
+  }
+
+  const QVariant labels_attribute = series->plotData()->attribute(PJ::VALUE_LABELS);
+  if (!labels_attribute.isValid())
+  {
+    return value_text;
+  }
+
+  const QVariantMap labels = labels_attribute.toMap();
+  auto label_it = labels.find(QString::number(value, 'g', 15));
+  if (label_it == labels.end())
+  {
+    label_it = labels.find(QString::number(value, 'g', 6));
+  }
+  if (label_it != labels.end())
+  {
+    value_text += QStringLiteral(" (%1)").arg(label_it.value().toString().toHtmlEscaped());
+  }
+  return value_text;
+}
+
+}  // namespace
 
 PlotWidget::PlotWidget(PlotDataMapRef& datamap, QWidget* parent)
   : PlotWidgetBase(parent)
@@ -1929,7 +1964,7 @@ void PlotWidget::showPointValues(QPoint point)
                    .arg(curve->pen().color().name())
                    .arg(curve->title().text())
                    .arg(QString::number(maybe_point->x(), 'f', prec))
-                   .arg(QString::number(maybe_point->y(), 'f', prec));
+                   .arg(formattedCurveValue(curve, maybe_point->y(), prec));
       }
     }
   }
