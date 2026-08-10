@@ -11,6 +11,7 @@ Current Direction
   - deterministic Y-axis/canvas alignment across stacked time-series plots,
   - a per-tab timeline slider aligned under the time-series canvas.
 - Prefer simplifying old optional sync behavior instead of preserving compatibility. This is beta development.
+- Reworks, refactors, and deletions are encouraged when they remove stale behavior or make the workflow clearer.
 
 Time-Series Layout Model
 

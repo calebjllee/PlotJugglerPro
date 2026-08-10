@@ -626,8 +626,12 @@ bool PlotWidgetBase::eventFilter(QObject* obj, QEvent* event)
       auto wheel_event = dynamic_cast<QWheelEvent*>(event);
       if (!isXYPlot())
       {
-        magnifier()->setAxisEnabled(QwtPlot::yLeft, true);
-        magnifier()->setAxisEnabled(QwtPlot::yRight, true);
+        if (obj != bottomAxis)
+        {
+          return true;
+        }
+        magnifier()->setAxisEnabled(QwtPlot::yLeft, false);
+        magnifier()->setAxisEnabled(QwtPlot::yRight, false);
         magnifier()->setDefaultMode(PlotMagnifier::X_AXIS);
       }
       else if (obj == bottomAxis)
@@ -654,9 +658,10 @@ bool PlotWidgetBase::eventFilter(QObject* obj, QEvent* event)
   {
     if (magnifier())
     {
-      magnifier()->setAxisEnabled(QwtPlot::yLeft, true);
-      magnifier()->setAxisEnabled(QwtPlot::yRight, true);
-      magnifier()->setDefaultMode(isXYPlot() ? PlotMagnifier::BOTH_AXES : PlotMagnifier::X_AXIS);
+      const bool xy_plot = isXYPlot();
+      magnifier()->setAxisEnabled(QwtPlot::yLeft, xy_plot);
+      magnifier()->setAxisEnabled(QwtPlot::yRight, xy_plot);
+      magnifier()->setDefaultMode(xy_plot ? PlotMagnifier::BOTH_AXES : PlotMagnifier::X_AXIS);
     }
     switch (event->type())
     {
