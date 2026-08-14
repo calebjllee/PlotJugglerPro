@@ -166,14 +166,14 @@
          <enum>Qt::NoFocus</enum>
         </property>
         <property name="toolTip">
-         <string>Add Panel Right</string>
+          <string>Add X/Y Panel</string>
         </property>
         <property name="text">
          <string/>
         </property>
         <property name="icon">
          <iconset resource="resource.qrc">
-          <normaloff>:/resources/svg/add_column.svg</normaloff>:/resources/svg/add_column.svg</iconset>
+           <normaloff>:/resources/svg/grid.svg</normaloff>:/resources/svg/grid.svg</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -204,14 +204,14 @@
          <enum>Qt::NoFocus</enum>
         </property>
         <property name="toolTip">
-         <string>Add Panel Below</string>
+          <string>Add Time-Series Chart</string>
         </property>
         <property name="text">
          <string/>
         </property>
         <property name="icon">
          <iconset resource="resource.qrc">
-          <normaloff>:/resources/svg/add_row.svg</normaloff>:/resources/svg/add_row.svg</iconset>
+           <normaloff>:/resources/svg/colored_charts.svg</normaloff>:/resources/svg/colored_charts.svg</iconset>
         </property>
         <property name="iconSize">
          <size>

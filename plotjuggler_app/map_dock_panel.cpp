@@ -354,16 +354,16 @@ void MapDockPanel::showContextMenu(const QPoint& pos)
   menu.setStyleSheet("QMenu::icon { width: 12px; }");
   auto* fit_action = menu.addAction("Fit to View");
   menu.addSeparator();
-  auto* split_h_action = menu.addAction("Add Panel Right");
-  auto* split_v_action = menu.addAction("Add Panel Below");
+  auto* split_h_action = menu.addAction("Add X/Y Panel");
+  auto* split_v_action = menu.addAction("Add Time-Series Chart");
   auto* split_map_action = menu.addAction("Add Map View");
 
   {
     QSettings settings;
     const QString theme = settings.value("StyleSheet::theme", "light").toString();
     fit_action->setIcon(LoadSvg(":/resources/svg/zoom_max.svg", theme));
-    split_h_action->setIcon(LoadSvg(":/resources/svg/add_column.svg", theme));
-    split_v_action->setIcon(LoadSvg(":/resources/svg/add_row.svg", theme));
+    split_h_action->setIcon(LoadSvg(":/resources/svg/grid.svg", theme));
+    split_v_action->setIcon(LoadSvg(":/resources/svg/colored_charts.svg", theme));
     split_map_action->setIcon(LoadSvg(":/resources/svg/scatter.svg", theme));
   }
 

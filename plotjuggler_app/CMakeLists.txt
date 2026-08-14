@@ -58,6 +58,8 @@ set(PLOTJUGGLER_SRC
     plotwidget.cpp
     plotwidget_editor.cpp
     plotwidget_transforms.cpp
+    sharepoint_graph_client.cpp
+    sharepoint_log_dialog.cpp
     plot_docker.cpp
     plot_docker_toolbar.cpp
     preferences_dialog.cpp
@@ -89,6 +91,9 @@ set(PLOTJUGGLER_SRC
     utils.cpp
     mainwindow.h
     realslider.h
+    sharepoint_config.h
+    sharepoint_graph_client.h
+    sharepoint_log_dialog.h
     nlohmann_parsers.cpp)
 
 if(wasmer_FOUND)

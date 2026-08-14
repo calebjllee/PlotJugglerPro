@@ -113,8 +113,8 @@ void DockToolbar::on_stylesheetChanged(QString theme)
   _collapse_icon = LoadSvg(":/resources/svg/collapse.svg", theme);
   setButtonIcon(ui->buttonFullscreen, _fullscreen_mode ? _collapse_icon : _expand_icon);
   setButtonIcon(ui->buttonClose, LoadSvg(":/resources/svg/close-button.svg", theme));
-  setButtonIcon(ui->buttonSplitHorizontal, LoadSvg(":/resources/svg/add_column.svg", theme));
-  setButtonIcon(ui->buttonSplitVertical, LoadSvg(":/resources/svg/add_row.svg", theme));
+  setButtonIcon(ui->buttonSplitHorizontal, LoadSvg(":/resources/svg/grid.svg", theme));
+  setButtonIcon(ui->buttonSplitVertical, LoadSvg(":/resources/svg/colored_charts.svg", theme));
 }
 
 void DockToolbar::dragEnterEvent(QDragEnterEvent* event)

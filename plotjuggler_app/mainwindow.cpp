@@ -59,6 +59,7 @@
 #include "PlotJuggler/svg_util.h"
 #include "PlotJuggler/reactive_function.h"
 #include "multifile_prefix.h"
+#include "sharepoint_log_dialog.h"
 
 #include "ui_aboutdialog.h"
 #include "ui_support_dialog.h"
@@ -3370,6 +3371,47 @@ void MainWindow::on_buttonLoadDatafile_clicked()
   if (dataLoaders().empty())
   {
     QMessageBox::warning(this, tr("Warning"), tr("No plugin was loaded to process a data file\n"));
+    return;
+  }
+
+  QMenu menu(this);
+  QAction* local_action = menu.addAction(LoadSvg(":/resources/svg/import.svg", _skin_path),
+                                         tr("Local File..."));
+  QAction* sharepoint_action = menu.addAction(LoadSvg(":/resources/svg/list.svg", _skin_path),
+                                              tr("SharePoint Logs..."));
+  QAction* selected_action =
+      menu.exec(ui->buttonLoadDatafile->mapToGlobal(QPoint(0, ui->buttonLoadDatafile->height())));
+  if (!selected_action)
+  {
+    return;
+  }
+
+  if (selected_action == sharepoint_action)
+  {
+    QStringList supported_extensions;
+    for (auto& [loader_name, loader] : dataLoaders())
+    {
+      Q_UNUSED(loader_name);
+      for (QString extension : loader->compatibleFileExtensions())
+      {
+        extension = extension.toLower();
+        if (!supported_extensions.contains(extension))
+        {
+          supported_extensions.push_back(extension);
+        }
+      }
+    }
+
+    PJ::SharePointLogDialog dialog(supported_extensions, this);
+    if (dialog.exec() == QDialog::Accepted && !dialog.selectedLocalFiles().empty())
+    {
+      loadDataFromFiles(dialog.selectedLocalFiles());
+    }
+    return;
+  }
+
+  if (selected_action != local_action)
+  {
     return;
   }
 

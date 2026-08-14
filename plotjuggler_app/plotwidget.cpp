@@ -255,10 +255,10 @@ void PlotWidget::buildActions()
   connect(_action_convert_to_map, &QAction::triggered, this,
           [this]() { emit convertToMapPanelRequested(); });
 
-  _action_split_horizontal = new QAction("Add XY Panel &Right", this);
+  _action_split_horizontal = new QAction("Add X/Y Panel", this);
   connect(_action_split_horizontal, &QAction::triggered, this, &PlotWidget::splitHorizontal);
 
-  _action_split_vertical = new QAction("Add Panel &Below", this);
+  _action_split_vertical = new QAction("Add Time-Series Chart", this);
   connect(_action_split_vertical, &QAction::triggered, this, &PlotWidget::splitVertical);
 
   _action_removeAllCurves = new QAction("&Remove ALL curves", this);
@@ -327,8 +327,8 @@ void PlotWidget::canvasContextMenuTriggered(const QPoint& pos)
   _action_edit->setIcon(LoadSvg(":/resources/svg/pencil-edit.svg", theme));
   _action_formula->setIcon(LoadSvg(":/resources/svg/Fx.svg", theme));
   _action_new_map_split->setIcon(LoadSvg(":/resources/svg/scatter.svg", theme));
-  _action_split_horizontal->setIcon(LoadSvg(":/resources/svg/add_column.svg", theme));
-  _action_split_vertical->setIcon(LoadSvg(":/resources/svg/add_row.svg", theme));
+  _action_split_horizontal->setIcon(LoadSvg(":/resources/svg/grid.svg", theme));
+  _action_split_vertical->setIcon(LoadSvg(":/resources/svg/colored_charts.svg", theme));
   _action_zoomOutMaximum->setIcon(LoadSvg(":/resources/svg/zoom_max.svg", theme));
   _action_zoomOutHorizontally->setIcon(LoadSvg(":/resources/svg/zoom_horizontal.svg", theme));
   _action_zoomOutVertically->setIcon(LoadSvg(":/resources/svg/zoom_vertical.svg", theme));

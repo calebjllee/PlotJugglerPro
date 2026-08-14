@@ -138,7 +138,8 @@ set(QT_LINK_LIBRARIES
     Qt5::Concurrent
     Qt5::Svg
     Qt5::OpenGL
-    Qt5::WebSockets)
+    Qt5::WebSockets
+    Qt5::Network)
 
 if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "No build type selected, default to RelWithDebInfo")
