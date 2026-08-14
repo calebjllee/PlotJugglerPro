@@ -83,7 +83,7 @@ release_date="$(date +%Y-%m-%d)"
 [[ -n "$release_id" ]] || die "git describe produced an empty release id"
 [[ -n "$metadata_version" ]] || metadata_version="0.0.0"
 
-installer_name="PlotJugglerPro-${release_id}-Windows-x64.exe"
+installer_name="PlotJugglerPro-${release_id}-Windows-x64-Installer.exe"
 installer_path="$REPO_ROOT/$installer_name"
 
 log "Git describe: $raw_version"
