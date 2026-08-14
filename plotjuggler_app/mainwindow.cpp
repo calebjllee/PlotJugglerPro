@@ -16,7 +16,6 @@
 #include <QCheckBox>
 #include <QCommandLineParser>
 #include <QDebug>
-#include <QDesktopServices>
 #include <QDomDocument>
 #include <QDoubleSpinBox>
 #include <QElapsedTimer>
@@ -62,7 +61,6 @@
 #include "sharepoint_log_dialog.h"
 
 #include "ui_aboutdialog.h"
-#include "ui_support_dialog.h"
 #include "preferences_dialog.h"
 #include "nlohmann_parsers.h"
 #include "cheatsheet/cheatsheet_dialog.h"
@@ -3229,17 +3227,6 @@ void MainWindow::onCustomPlotCreated(std::vector<CustomPlotPtr> custom_plots)
   _curvelist_widget->clearSelections();
 }
 
-void MainWindow::on_actionReportBug_triggered()
-{
-  QDesktopServices::openUrl(QUrl("https://github.com/facontidavide/PlotJuggler/issues"));
-}
-
-void MainWindow::on_actionShare_the_love_triggered()
-{
-  QDesktopServices::openUrl(QUrl("https://twitter.com/intent/"
-                                 "tweet?hashtags=PlotJuggler"));
-}
-
 void MainWindow::on_actionAbout_triggered()
 {
   QDialog* dialog = new QDialog(this);
@@ -3247,19 +3234,12 @@ void MainWindow::on_actionAbout_triggered()
   ui->setupUi(dialog);
 
   ui->label_version->setText(QString("version: ") + QApplication::applicationVersion());
+  ui->titleTextBrowser->setHtml("<h2>PlotJugglerPro</h2>");
+  ui->bodyTextBrowser->setHtml(
+      "<p><b>PlotJugglerPro</b> is an internal workflow fork of PlotJuggler.</p>"
+      "<p>This build is tailored for local data review, native map panels, lazy-loaded data, "
+      "and the PlotJugglerPro time-series layout model.</p>");
   dialog->setAttribute(Qt::WA_DeleteOnClose);
-
-  QFile fileTitle(_skin_path + "/about_window_title.html");
-  if (fileTitle.open(QIODevice::ReadOnly))
-  {
-    ui->titleTextBrowser->setHtml(fileTitle.readAll());
-  }
-
-  QFile fileBody(_skin_path + "/about_window_body.html");
-  if (fileBody.open(QIODevice::ReadOnly))
-  {
-    ui->bodyTextBrowser->setHtml(fileBody.readAll());
-  }
 
   dialog->setAttribute(Qt::WA_DeleteOnClose);
   dialog->exec();
@@ -3274,17 +3254,6 @@ void MainWindow::on_actionCheatsheet_triggered()
   dialog->exec();
   settings.setValue("Cheatsheet.geometry", dialog->saveGeometry());
   dialog->deleteLater();
-}
-
-void MainWindow::on_actionSupportPlotJuggler_triggered()
-{
-  QDialog* dialog = new QDialog(this);
-  auto ui = new Ui::SupportDialog();
-  ui->setupUi(dialog);
-
-  dialog->setAttribute(Qt::WA_DeleteOnClose);
-
-  dialog->exec();
 }
 
 /*

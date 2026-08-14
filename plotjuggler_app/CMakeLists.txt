@@ -12,7 +12,6 @@ qt5_wrap_ui(
   UI_SRC
   aboutdialog.ui
   mainwindow.ui
-  support_dialog.ui
   curvelist_panel.ui
   preferences_dialog.ui
   suggest_dialog.ui
@@ -96,10 +95,6 @@ set(PLOTJUGGLER_SRC
     sharepoint_log_dialog.h
     nlohmann_parsers.cpp)
 
-if(wasmer_FOUND)
-  list(APPEND PLOTJUGGLER_SRC wasm_runtime.cpp wasm_parser.cpp)
-endif()
-
 add_executable(plotjuggler ${PLOTJUGGLER_SRC} ${RES_SRC} ${UI_SRC}
                            ${BACKWARD_ENABLE})
 
@@ -109,11 +104,6 @@ if(WIN32 AND MSVC)
     PRIVATE
       "/MANIFEST:EMBED"
       "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/plotjuggler.exe.manifest")
-endif()
-
-if(wasmer_FOUND)
-  target_link_libraries(plotjuggler PRIVATE wasmer::wasmer)
-  target_compile_definitions(plotjuggler PRIVATE WASM_RUNTIME_ENABLED)
 endif()
 
 if(NOT WIN32)

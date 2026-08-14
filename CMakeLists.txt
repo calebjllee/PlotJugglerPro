@@ -196,12 +196,6 @@ find_or_download_lz4()
 include(${PROJECT_SOURCE_DIR}/cmake/find_or_download_zstd.cmake)
 find_or_download_zstd()
 
-if(NOT COMPILING_WITH_AMENT)
-  include(cmake/download_wasmer.cmake)
-  download_wasmer()
-endif()
-
-
 add_subdirectory(3rdparty/qwt/src)
 add_subdirectory(3rdparty/QCodeEditor)
 add_subdirectory(3rdparty/color_widgets)

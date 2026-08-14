@@ -2011,9 +2011,6 @@
      <string>Help</string>
     </property>
     <addaction name="actionCheatsheet"/>
-    <addaction name="actionSupportPlotJuggler"/>
-    <addaction name="actionShare_the_love"/>
-    <addaction name="actionReportBug"/>
     <addaction name="separator"/>
     <addaction name="actionAbout"/>
    </widget>
@@ -2042,18 +2039,6 @@
     <string>About</string>
    </property>
   </action>
-  <action name="actionReportBug">
-   <property name="icon">
-    <iconset resource="resource.qrc">
-     <normaloff>:/resources/github.png</normaloff>:/resources/github.png</iconset>
-   </property>
-   <property name="text">
-    <string>Report a problem</string>
-   </property>
-   <property name="toolTip">
-    <string>Report issue on GitHub</string>
-   </property>
-  </action>
   <action name="actionClearBuffer">
    <property name="text">
     <string>Clear data points</string>
@@ -2065,11 +2050,6 @@
   <action name="actionCheatsheet">
    <property name="text">
     <string>Cheatsheet</string>
-   </property>
-  </action>
-  <action name="actionSupportPlotJuggler">
-   <property name="text">
-    <string>Support PlotJuggler</string>
    </property>
   </action>
   <action name="actionClearRecentData">
@@ -2101,15 +2081,6 @@
   <action name="actionPreferences">
    <property name="text">
     <string>Preferences...</string>
-   </property>
-  </action>
-  <action name="actionShare_the_love">
-   <property name="icon">
-    <iconset resource="resource.qrc">
-     <normaloff>:/resources/twitter.png</normaloff>:/resources/twitter.png</iconset>
-   </property>
-   <property name="text">
-    <string>Share the love</string>
    </property>
   </action>
   <action name="actionLoadStyleSheet">

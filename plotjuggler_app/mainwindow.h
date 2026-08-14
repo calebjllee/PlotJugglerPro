@@ -294,9 +294,7 @@ public slots:
 
   void onActionFullscreenTriggered();
 
-  void on_actionReportBug_triggered();
   void on_actionCheatsheet_triggered();
-  void on_actionSupportPlotJuggler_triggered();
   // TODO ?  void on_actionSaveAllPlotTabs_triggered();
 
   void on_actionAbout_triggered();
@@ -314,7 +312,6 @@ public slots:
 private slots:
   void on_stylesheetChanged(QString style_name);
   void on_actionPreferences_triggered();
-  void on_actionShare_the_love_triggered();
   void on_playbackStep_valueChanged(double arg1);
   void on_actionLoadStyleSheet_triggered();
   void on_buttonLegend_clicked();

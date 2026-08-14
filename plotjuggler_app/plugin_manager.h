@@ -45,7 +45,6 @@ private:
   std::map<QString, ParserFactoryPtr> _parser_factories;
 
   void loadPlugin(const QString& pluginPath);
-  void loadWASM(const QString& pluginPath);
 };
 
 }  // namespace PJ

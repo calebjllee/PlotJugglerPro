@@ -15,15 +15,9 @@
 #include <QFontDatabase>
 #include <QSettings>
 #include <QPushButton>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QJsonDocument>
 #include <QDir>
 #include <QDialog>
-#include <QDesktopServices>
-#include <QHostInfo>
-#include <QSslConfiguration>
-#include <QSslSocket>
+#include <QRandomGenerator>
 
 #include "PlotJuggler/transform_function.h"
 #include "transforms/binary_filter.h"
@@ -62,19 +56,6 @@ void configureQtHighDpiScaling()
   QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
       Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 #endif
-}
-
-inline int GetVersionNumber(QString str)
-{
-  QStringList online_version = str.split('.');
-  if (online_version.size() != 3)
-  {
-    return 0;
-  }
-  int major = online_version[0].toInt();
-  int minor = online_version[1].toInt();
-  int patch = online_version[2].toInt();
-  return major * 10000 + minor * 100 + patch;
 }
 
 QPixmap getFunnySplashscreen()
@@ -413,98 +394,16 @@ int main(int argc, char* argv[])
     window->on_buttonStreamingStart_clicked();
   }
 
-  // Check for new releases on GitHub
-  QNetworkAccessManager* manager_new_release = new QNetworkAccessManager(&app);
-  QObject::connect(
-      manager_new_release, &QNetworkAccessManager::finished, [window](QNetworkReply* reply) {
-        if (reply->error())
-        {
-          qDebug() << "GitHub release check error:" << reply->error() << reply->errorString();
-          return;
-        }
+  const QStringList startup_messages = {
+    QObject::tr("Mogging Matlab since 2026."),
+    QObject::tr("Back to Cypress..."),
+    QObject::tr("We got PlotJuggler Pro before GTA 6..."),
+    QObject::tr("Go Terps!"),
+    QObject::tr("Next Step: Exit this app. You have reels to scroll!")
+  };
 
-        QString answer = reply->readAll();
-        QJsonDocument document = QJsonDocument::fromJson(answer.toUtf8());
-        QJsonObject data = document.object();
-        QString url = data["html_url"].toString();
-        QString name = data["name"].toString();
-        QString tag_name = data["tag_name"].toString();
-
-        int online_number = GetVersionNumber(tag_name);
-        int current_number = GetVersionNumber(VERSION_STRING);
-
-        qDebug() << "Current version:" << VERSION_STRING << ". Latest release version:" << tag_name;
-
-        if (online_number > current_number)
-        {
-          QString message = QString("New release available: <b>%1</b><br>"
-                                    "<a href=\"%2\">View on GitHub</a>")
-                                .arg(name, url);
-          QPixmap icon(":/resources/success_kid.png");
-          window->showToast(message, icon);
-        }
-      });
-
-  QNetworkRequest request_new_release;
-  request_new_release.setUrl(
-      QUrl("https://api.github.com/repos/facontidavide/PlotJuggler/releases/latest"));
-
-  // Disable SSL peer verification for GitHub API (workaround for Qt5/OpenSSL 3.0 incompatibility)
-  QSslConfiguration sslConfig_release = request_new_release.sslConfiguration();
-  sslConfig_release.setPeerVerifyMode(QSslSocket::VerifyNone);
-  request_new_release.setSslConfiguration(sslConfig_release);
-
-  manager_new_release->get(request_new_release);
-
-  QNetworkAccessManager manager_message;
-  QObject::connect(
-      &manager_message, &QNetworkAccessManager::finished, [window](QNetworkReply* reply) {
-        if (reply->error())
-        {
-          qDebug() << "Telemetry reply error:" << reply->error() << reply->errorString();
-          return;
-        }
-        qDebug() << "Telemetry reply received";
-        QString answer = reply->readAll();
-        QJsonDocument document = QJsonDocument::fromJson(answer.toUtf8());
-        QJsonObject data = document.object();
-        QString message = data["message"].toString();
-        window->setStatusBarMessage(message);
-      });
-
-  // These are 100% anonymous requests; no personal data is sent.
-  // We collect your statistics to improve PlotJuggler.
-  // Create JSON payload
-  QJsonObject payload;
-  payload["user_id"] = QString::fromLatin1(QSysInfo::machineUniqueId());
-  payload["os"] = QSysInfo::productType();
-  payload["version"] = VERSION_STRING;
-  payload["installation"] = QString(PJ_INSTALLATION);
-
-  QJsonDocument doc(payload);
-  QByteArray jsonData = doc.toJson();
-
-  // Test DNS resolution first
-  QHostInfo hostInfo = QHostInfo::fromName("app.plotjuggler.io");
-  if (hostInfo.error() != QHostInfo::NoError)
-  {
-    qDebug() << "DNS lookup failed:" << hostInfo.errorString()
-             << " Addresses found:" << hostInfo.addresses();
-  }
-
-  // Create network request
-  QNetworkRequest request_message;
-  request_message.setUrl(QUrl("https://app.plotjuggler.io/telemetry"));
-  request_message.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-  // Disable SSL peer verification for telemetry (workaround for Qt5/OpenSSL 3.0 incompatibility)
-  // This is acceptable for anonymous telemetry data
-  QSslConfiguration sslConfig = request_message.sslConfiguration();
-  sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
-  request_message.setSslConfiguration(sslConfig);
-
-  // Send POST request
-  manager_message.post(request_message, jsonData);
+  const int message_index = QRandomGenerator::global()->bounded(startup_messages.size());
+  window->setStatusBarMessage(startup_messages.at(message_index));
 
   return app.exec();
 }

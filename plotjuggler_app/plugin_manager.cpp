@@ -4,11 +4,6 @@
 #include <QDebug>
 #include <iostream>
 
-#ifdef WASM_RUNTIME_ENABLED
-#include "wasm_runtime.hpp"
-#include "wasm_parser.hpp"
-#endif
-
 namespace PJ
 {
 
@@ -33,10 +28,6 @@ void PluginManager::loadPluginsFromFolder(const QString& folderPath)
     if (fileInfo.suffix() == "so" || fileInfo.suffix() == "dll" || fileInfo.suffix() == "dylib")
     {
       loadPlugin(pluginPath);
-    }
-    if (fileInfo.suffix() == "wasm")
-    {
-      loadWASM(pluginPath);
     }
   }
 }
@@ -185,63 +176,6 @@ void PluginManager::unloadAllPlugins()
   _toolboxes.clear();
   _parser_factories.clear();
   _loaded_plugins.clear();
-}
-
-void PluginManager::loadWASM(const QString& pluginPath)
-{
-#ifdef WASM_RUNTIME_ENABLED
-  try
-  {
-    auto runtime = std::make_unique<WasmRuntime>(pluginPath.toStdString());
-    auto manifest = QString::fromStdString(readPluginManifest(*runtime));
-    // split into lines
-    std::map<QString, QString> manifest_map;
-    for (const auto& line : manifest.split('\n', Qt::SkipEmptyParts))
-    {
-      auto parts = line.split(':');
-      if (parts.size() == 2)
-      {
-        manifest_map[parts[0].trimmed()] = parts[1].trimmed();
-      }
-    }
-
-    if (manifest_map.find("plugin_type") == manifest_map.end() ||
-        manifest_map.find("name") == manifest_map.end() ||
-        manifest_map.find("encoding") == manifest_map.end())
-    {
-      qDebug() << QString("Invalid manifest in WASM plugin:");
-      std::cout << manifest.toStdString() << std::endl;
-      return;
-    }
-    const QString plugin_name = manifest_map.at("name");
-    const QString plugin_type = manifest_map.at("plugin_type");
-    const QString plugin_encoding = manifest_map.at("encoding");
-
-    qDebug() << QString("%1 is a %2 WASM plugin").arg(pluginPath).arg(plugin_type);
-
-    if (plugin_type == "MessageParser")
-    {
-      auto parser =
-          std::make_shared<ParserFactoryWASM>(std::move(runtime), plugin_name, plugin_encoding);
-      auto encoding_list = plugin_encoding.split(';', Qt::SkipEmptyParts);
-      for (const auto& encoding : encoding_list)
-      {
-        _parser_factories.insert(std::make_pair(encoding, parser));
-      }
-    }
-    else
-    {
-      qDebug() << QString("Unsupported WASM plugin type: %1").arg(plugin_type);
-      std::cout << manifest.toStdString() << std::endl;
-    }
-  }
-  catch (const std::exception& e)
-  {
-    qDebug() << QString("Failed to load WASM plugin %1: %2").arg(pluginPath, e.what());
-  }
-#else
-  qDebug() << "WASM runtime support is not enabled in this build of PlotJuggler.";
-#endif
 }
 
 }  // namespace PJ
