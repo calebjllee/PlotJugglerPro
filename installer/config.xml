@@ -1,11 +1,12 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <Installer>
-  <Name>PlotJuggler</Name>
-  <Version>3.15.0</Version>
-  <Title>PlotJuggler installer</Title>
-  <Publisher>Davide Faconti</Publisher>
-  <StartMenuDir>PlotJuggler</StartMenuDir>
-  <TargetDir>@ApplicationsDirX64@/PlotJuggler</TargetDir>
+  <Name>PlotJugglerPro</Name>
+  <Version>2026.8.14</Version>
+  <Title>PlotJugglerPro installer</Title>
+  <Publisher>PlotJugglerPro</Publisher>
+  <StyleSheet>installer.qss</StyleSheet>
+  <StartMenuDir>PlotJugglerPro</StartMenuDir>
+  <TargetDir>@ApplicationsDirX64@/PlotJugglerPro</TargetDir>
   <DependsOnLocalInstallerBinary>true</DependsOnLocalInstallerBinary>
-  <RunProgram>@TargetDir@/PlotJuggler</RunProgram>
+  <RunProgram>@TargetDir@/PlotJugglerPro.exe</RunProgram>
 </Installer>

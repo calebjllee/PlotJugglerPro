@@ -1,0 +1,46 @@
+QWidget {
+  background: #ffffff;
+  color: #111111;
+}
+
+QLabel,
+QCheckBox,
+QRadioButton,
+QGroupBox,
+QListWidget,
+QTreeWidget,
+QTextEdit,
+QPlainTextEdit {
+  color: #111111;
+}
+
+QLineEdit,
+QTextEdit,
+QPlainTextEdit,
+QListWidget,
+QTreeWidget {
+  background: #ffffff;
+  color: #111111;
+  selection-background-color: #2563eb;
+  selection-color: #ffffff;
+}
+
+QPushButton,
+QToolButton {
+  background: #f3f4f6;
+  color: #111111;
+  border: 1px solid #9ca3af;
+  border-radius: 3px;
+  padding: 4px 10px;
+}
+
+QPushButton:hover,
+QToolButton:hover {
+  background: #e5e7eb;
+}
+
+QPushButton:disabled,
+QToolButton:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
