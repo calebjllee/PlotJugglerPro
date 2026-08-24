@@ -21,7 +21,8 @@
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/install",
         "Qt5_DIR": "C:/Qt/5.15.2/msvc2019_64/lib/cmake/Qt5",
         "Qt5WebEngineWidgets_DIR": "C:/Qt/5.15.2/msvc2019_64/lib/cmake/Qt5WebEngineWidgets",
-        "CMAKE_PREFIX_PATH": "C:/Qt/5.15.2/msvc2019_64"
+        "CMAKE_PREFIX_PATH": "C:/Qt/5.15.2/msvc2019_64",
+        "Z_VCPKG_POWERSHELL_PATH": "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
       }
     }
   ],

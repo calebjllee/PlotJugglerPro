@@ -1,6 +1,6 @@
 # PlotJugglerPro Windows Release Notes
 
-This document records the local Windows packaging flow used to create repeatable installers for PlotJugglerPro.
+This document records the maintained Windows packaging flow for PlotJugglerPro.
 
 The goal is not a mass-public release pipeline. The goal is a practical standalone Windows installer that can be sent out after bug fixes and installed by users with the normal uninstall/reinstall flow.
 
@@ -8,7 +8,8 @@ The goal is not a mass-public release pipeline. The goal is a practical standalo
 
 For the current Windows release process, build and package locally on the Windows development machine.
 
-GitHub Actions is useful later for repeatable public releases, but local packaging is simpler while the user group is small and releases are still being troubleshot directly.
+GitHub Actions and inherited upstream release paths are not currently maintained
+for this branch.
 
 ## One-Command Release
 
@@ -57,7 +58,7 @@ git describe --tags --always --dirty
 Dots are changed to hyphens. For example:
 
 ```text
-2026.8.14 -> PlotJugglerPro-2026-8-14-Windows-x64.exe
+2026.8.14 -> PlotJugglerPro-2026-8-14-Windows-x64-Installer.exe
 ```
 
 If the working tree is dirty, Git may add `-dirty` to the generated filename.
@@ -167,7 +168,7 @@ Get-ChildItem C:\Qt -Recurse -Filter binarycreator.exe | Select-Object -First 1 
 Then run, from the repository root:
 
 ```powershell
-& "C:\Qt\Tools\QtInstallerFramework\4.10\bin\binarycreator.exe" --offline-only -c installer\config.xml -p installer PlotJugglerPro-YYYY-MM-DD-Windows-x64.exe
+& "C:\Qt\Tools\QtInstallerFramework\4.10\bin\binarycreator.exe" --offline-only -c installer\config.xml -p installer PlotJugglerPro-YYYY-MM-DD-Windows-x64-Installer.exe
 ```
 
 Adjust the `binarycreator.exe` path if your Qt Installer Framework version is different.
@@ -183,15 +184,15 @@ C:\Program Files\PlotJugglerPro\PlotJugglerPro.exe
 If run from the repository root, the output installer is created at:
 
 ```powershell
-PlotJugglerPro-YYYY-MM-DD-Windows-x64.exe
+PlotJugglerPro-YYYY-MM-DD-Windows-x64-Installer.exe
 ```
 
 Use any clear release identifier in the filename, such as a date, build number, or short version:
 
 ```powershell
-PlotJugglerPro-2026-08-14-Windows-x64.exe
-PlotJugglerPro-v1.0.3-Windows-x64.exe
-PlotJugglerPro-fix-map-tracker-Windows-x64.exe
+PlotJugglerPro-2026-08-14-Windows-x64-Installer.exe
+PlotJugglerPro-v1.0.3-Windows-x64-Installer.exe
+PlotJugglerPro-fix-map-tracker-Windows-x64-Installer.exe
 ```
 
 ## Installer Metadata
@@ -239,7 +240,7 @@ C:\Program Files\PlotJugglerPro\licenses
 Send users the generated offline installer:
 
 ```powershell
-PlotJugglerPro-YYYY-MM-DD-Windows-x64.exe
+PlotJugglerPro-YYYY-MM-DD-Windows-x64-Installer.exe
 ```
 
 Do not send only:
@@ -269,11 +270,10 @@ If possible, test on a second Windows machine or a clean VM.
 
 For each bug-fix release:
 
-1. Build the Release target.
-2. Re-stage `installer\io.plotjuggler.application\data`.
-3. Run `installer\windeploy_pj.bat`.
-4. Run `binarycreator.exe` with a new output filename.
-5. Ask users to uninstall their existing PlotJugglerPro from Windows Apps & Features.
-6. Ask users to run the new installer.
+1. Run `.\tools\package_windows_release.ps1`.
+2. Smoke test the installer.
+3. Send users the generated `PlotJugglerPro-*-Windows-x64-Installer.exe`.
+4. Ask users to uninstall their existing PlotJugglerPro from Windows Apps & Features.
+5. Ask users to run the new installer.
 
 Keeping one install directory, `C:\Program Files\PlotJugglerPro`, makes troubleshooting simpler.

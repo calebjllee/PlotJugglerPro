@@ -1,202 +1,61 @@
-# Compile in Linux
+# PlotJugglerPro Build Matrix
 
-On Ubuntu (20.04/22.04), the dependencies can be installed with the command:
+This branch supports one verified build path today:
 
-```shell
-sudo apt -y install qtbase5-dev libqt5svg5-dev libqt5websockets5-dev \
-      libqt5opengl5-dev libqt5x11extras5-dev libprotoc-dev libzmq3-dev \
-      liblz4-dev libzstd-dev
+- Windows 11
+- Visual Studio 2022
+- CMake preset `windows-vs2022-pro`
+- vcpkg at `C:\vcpkg`
+- Qt 5.15.2 at `C:\Qt\5.15.2\msvc2019_64`
+
+The next intended platform is native macOS. Linux, Snap, AppImage, Nix, Docker,
+ROS package builds, and Conan workflows are upstream inheritance and are not
+currently maintained for PlotJugglerPro.
+
+## Windows
+
+Configure:
+
+```powershell
+cmake --preset windows-vs2022-pro
 ```
 
-On Fedora (42):
+Build a runnable local install:
 
-```shell
-sudo dnf install qt5-qtbase-devel qt5-qtsvg-devel qt5-qtwebsockets-devel \
-      qt5-qtx11extras-devel
+```powershell
+cmake --build build\PlotJugglerPro --config Release --target install
 ```
 
-Clone the repository into **~/plotjuggler_ws**:
+Run:
 
-```shell
-git clone https://github.com/facontidavide/PlotJuggler.git ~/plotjuggler_ws/src/PlotJuggler
-cd ~/plotjuggler_ws
+```powershell
+.\install\bin\plotjuggler.exe
 ```
 
-Then compile using cmake (qmake is NOT supported):
+Fast compile check:
 
-```shell
-cmake -S src/PlotJuggler -B build/PlotJuggler -DCMAKE_INSTALL_PREFIX=install
-cmake --build build/PlotJuggler --config RelWithDebInfo --target install
+```powershell
+cmake --build build\PlotJugglerPro --config Release --target plotjuggler
 ```
 
-## Optional: build with Conan
+Installer packaging:
 
-If you want to use [conan](https://conan.io/) to manage the dependencies,
-follow this instructions instead.
-
-```shell
-conan install src/PlotJuggler --output-folder build/PlotJuggler \
-      --build missing -pr:b=default -s build_type=RelWithDebInfo
-
-export CMAKE_TOOLCHAIN=$(pwd)/build/PlotJuggler/conan_toolchain.cmake
-
-cmake -S src/PlotJuggler -B build/PlotJuggler \
-      -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN  \
-      -DCMAKE_INSTALL_PREFIX=install \
-      -DCMAKE_POLICY_DEFAULT_CMP0091=NEW \
-      -DBUILDING_WITH_CONAN=ON
-
-cmake --build build/PlotJuggler --config RelWithDebInfo --target install
+```powershell
+.\tools\package_windows_release.ps1
 ```
 
-## Deploy as an AppImage
+See `PLOTJUGGLER_PRO_BUILD.md` and `PLOTJUGGLER_PRO_WINDOWS_RELEASE.md` for the
+current local workflow.
 
-Compile and install as described earlier.
+## macOS
 
-Download (once) linuxdeploy:
+macOS is planned but not yet verified for this Pro branch. The likely path is a
+native CMake preset using Homebrew `qt@5`, followed by `macdeployqt` and DMG
+packaging. Treat existing upstream macOS CI or Conan references as stale until
+they are rebuilt around the Pro workflow.
 
-```shell
-wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+## What Not To Use
 
-wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
-
-chmod +x linuxdeploy*.AppImage
-mkdir -p AppDir/usr/bin
-```
-
-Then:
-
-```shell
-cd src/PlotJuggler;export VERSION=$(git describe --abbrev=0 --tags);cd -
-echo $VERSION
-cp -v install/bin/* AppDir/usr/bin
-
-./linuxdeploy-x86_64.AppImage --appdir=AppDir \
-    -d ./src/PlotJuggler/io.plotjuggler.PlotJuggler.desktop \
-    -i ./src/PlotJuggler/plotjuggler.png \
-    --plugin qt --output appimage
-```
-
-## Deploy as an AppImage via Docker
-
-```shell
-docker buildx build -o . .
-```
-
-# Compile in macOS
-
-On macOS, the dependencies can be installed using [brew](https://brew.sh/) with the following command:
-
-```shell
-brew install cmake qt@5 protobuf mosquitto zeromq zstd git-lfs
-```
-
-If a newer version of qt is installed, you may need to temporarily link to qt5
-
-```shell
-brew link qt@5 --overwrite
-# brew link qt --overwrite  # Run once you are done building to restore the original linking
-```
-
-Add CMake into your env-vars to be detected by cmake
-
-```shell
-echo  'QT_HOME=$(brew --prefix qt@5) \
-export CPPFLAGS="-I $QT_HOME/include" \
-export PKG_CONFIG_PATH="$QT_HOME/lib/pkgconfig" \
-export LDFLAGS="-L$QT_HOME/lib"' >> $HOME/.zshrc
-```
-
-If you don't want to permanently add them into your main file, you can try by just exporting locally in the current terminal with:
-
-```shell
-QT_HOME=$(brew --prefix qt@5)
-export CPPFLAGS="-I $QT_HOME/include"
-export PKG_CONFIG_PATH="$QT_HOME/lib/pkgconfig"
-export LDFLAGS="-L$QT_HOME/lib"
-```
-
-Clone the repository into **~/plotjuggler_ws**:
-
-```shell
-git clone https://github.com/facontidavide/PlotJuggler.git ~/plotjuggler_ws/src/PlotJuggler
-cd ~/plotjuggler_ws
-```
-
-Then compile using cmake:
-
-```shell
-cmake -S src/PlotJuggler -B build/PlotJuggler -DCMAKE_INSTALL_PREFIX=install -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-cmake --build build/PlotJuggler --config RelWithDebInfo --target install
-```
-
-# Compile in Windows
-
-Dependencies in Windows are managed either using
-[conan](https://conan.io/) or [vcpkg](https://vcpkg.io/en/index.html)
-
-The rest of this section assumes that you installed
-You need to install first [Qt](https://www.qt.io/download-open-source) and
-[git](https://desktop.github.com/).
-
-**Visual studio 2019 (16)**, that is part of the Qt 5.15.x installation,
- will be used to compile PlotJuggler.
-
-Start creating a folder called **plotjuggler_ws** and cloning the repo:
-
-```batch
-cd \
-mkdir plotjuggler_ws
-cd plotjuggler_ws
-git clone https://github.com/facontidavide/PlotJuggler.git src/PlotJuggler
-```
-
-## Build with Conan
-
-Note: the Arrow/Parque plugin is not supported in Conan. Use vcpkg instead, if you need
-that specific plugin.
-
-```batch
-conan install src/PlotJuggler --output-folder build/PlotJuggler ^
-      --build=missing -pr:b=default -s build_type=Release
-
-set CMAKE_TOOLCHAIN=%cd%/build/PlotJuggler/conan_toolchain.cmake
-
-cmake -G "Visual Studio 16" ^
-      -S src/PlotJuggler -B build/PlotJuggler ^
-      -DCMAKE_TOOLCHAIN_FILE=%CMAKE_TOOLCHAIN%  ^
-      -DCMAKE_INSTALL_PREFIX=%cd%/install ^
-      -DCMAKE_POLICY_DEFAULT_CMP0091=NEW ^
-      -DBUILDING_WITH_CONAN=ON
-
-
-cmake --build build/PlotJuggler --config Release --target install
-```
-
-## Build with vcpkg
-
-Change the path where **vcpkg.cmake** can be found as needed.
-
-```batch
-set CMAKE_TOOLCHAIN=/path/vcpkg/scripts/buildsystems/vcpkg.cmake
-
-cmake -G "Visual Studio 16" ^
-      -S src/PlotJuggler -B build/PlotJuggler ^
-      -DCMAKE_TOOLCHAIN_FILE=%CMAKE_TOOLCHAIN%  ^
-      -DCMAKE_INSTALL_PREFIX=%cd%/install
-
-cmake --build build/PlotJuggler --config Release --target install
-```
-
-## Create a Windows installer
-
-Change the **Qt** and **QtInstallerFramework** version as needed.
-
-```batch
-xcopy src\PlotJuggler\installer installer\ /Y /S /f /z
-xcopy install\bin\*.* installer\io.plotjuggler.application\data /Y /S /f /z
-
-installer\windeploy_pj.bat C:\QtPro\5.15.16\msvc2019_64\bin\windeployqt.exe
-
-C:\QtPro\Tools\QtInstallerFramework\4.6\bin\binarycreator.exe --offline-only -c installer\config.xml -p installer  PlotJuggler-Windows-installer.exe
-```
+Do not use old upstream commands that clone `facontidavide/PlotJuggler`, build in
+`build/PlotJuggler`, or package Snap/AppImage/Docker artifacts. They do not
+describe this repository's current build.

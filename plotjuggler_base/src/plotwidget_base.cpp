@@ -30,6 +30,7 @@
 #include "qwt_symbol.h"
 #include "qwt_text.h"
 
+#include <algorithm>
 #include <array>
 #include <QBoxLayout>
 #include <QMessageBox>
@@ -43,6 +44,16 @@
 #include "plotpanner.h"
 
 static int _global_color_index_ = 0;
+
+static const std::array<QColor, 8>& defaultCurvePalette()
+{
+  // https://matplotlib.org/3.1.1/users/dflt_style_changes.html
+  static const std::array<QColor, 8> colors = {
+    QColor("#1f77b4"), QColor("#d62728"), QColor("#1ac938"), QColor("#ff7f0e"),
+    QColor("#f14cc1"), QColor("#9467bd"), QColor("#17becf"), QColor("#bcbd22")
+  };
+  return colors;
+}
 
 class PlotWidgetBase::QwtPlotPimpl : public QwtPlot
 {
@@ -760,52 +771,49 @@ QColor PlotWidgetBase::getColorHint(PlotDataXY* data)
   QSettings settings;
   bool remember_color = settings.value("Preferences::remember_color", true).toBool();
 
+  auto colorIsAlreadyUsed = [this](const QColor& color) {
+    return std::any_of(p->curve_list.begin(), p->curve_list.end(),
+                       [&color](const CurveInfo& info) {
+                         return info.curve && info.curve->pen().color().rgb() == color.rgb();
+                       });
+  };
+
   if (data)
   {
     auto colorHint = data->attribute(COLOR_HINT);
     if (remember_color && colorHint.isValid())
     {
-      return colorHint.value<QColor>();
+      QColor remembered_color = colorHint.value<QColor>();
+      if (!colorIsAlreadyUsed(remembered_color))
+      {
+        return remembered_color;
+      }
     }
   }
+
   QColor color;
-  bool use_plot_color_index = settings.value("Preferences::use_plot_color_index", false).toBool();
-  int index = p->curve_list.size();
-
-  if (!use_plot_color_index)
+  for (const auto& palette_color : defaultCurvePalette())
   {
-    index = (_global_color_index_++);
+    if (!colorIsAlreadyUsed(palette_color))
+    {
+      color = palette_color;
+      break;
+    }
   }
 
-  // https://matplotlib.org/3.1.1/users/dflt_style_changes.html
-  switch (index % 8)
+  if (!color.isValid())
   {
-    case 0:
-      color = QColor("#1f77b4");
-      break;
-    case 1:
-      color = QColor("#d62728");
-      break;
-    case 2:
-      color = QColor("#1ac938");
-      break;
-    case 3:
-      color = QColor("#ff7f0e");
-      break;
+    bool use_plot_color_index = settings.value("Preferences::use_plot_color_index", false).toBool();
+    int index = p->curve_list.size();
 
-    case 4:
-      color = QColor("#f14cc1");
-      break;
-    case 5:
-      color = QColor("#9467bd");
-      break;
-    case 6:
-      color = QColor("#17becf");
-      break;
-    case 7:
-      color = QColor("#bcbd22");
-      break;
+    if (!use_plot_color_index)
+    {
+      index = (_global_color_index_++);
+    }
+
+    color = defaultCurvePalette()[index % defaultCurvePalette().size()];
   }
+
   if (data)
   {
     data->setAttribute(COLOR_HINT, color);

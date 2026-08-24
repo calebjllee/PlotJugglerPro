@@ -7,14 +7,11 @@ assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**Is your feature request related to a workflow problem?**
+A clear description of the local data-review workflow this would improve.
 
 **Describe the solution you'd like**
 A clear and concise description of what you want to happen.
 
 **Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
-
-**Would your company support the development of this feature**
-Developers need to pay rent too.
+A clear description of any alternative workflow or implementation you considered.
