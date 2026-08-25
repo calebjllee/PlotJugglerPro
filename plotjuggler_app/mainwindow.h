@@ -240,6 +240,8 @@ private:
 
   bool ensureCurveLoaded(const std::string& curve_name);
 
+  void reloadPlottedLazyMf4Series();
+
   bool hydrateLazyMf4Series(const std::string& curve_name, LazyMf4SeriesInfo& info);
 
   bool isStreamingActive() const;

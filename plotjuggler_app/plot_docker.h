@@ -86,6 +86,7 @@ public:
   void replot();
 
   void refreshSharedTimeAxes();
+  void refreshTimeViewportAfterDataReload();
   void setTrackerTime(double tracker_time);
   Range currentTimeViewport() const;
   bool hasTimeViewport() const;

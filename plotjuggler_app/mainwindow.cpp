@@ -1455,6 +1455,35 @@ bool MainWindow::ensureCurveLoaded(const std::string& curve_name)
   return hydrateLazyMf4Series(curve_name, info_it->second);
 }
 
+void MainWindow::reloadPlottedLazyMf4Series()
+{
+  std::set<std::string> plotted_lazy_series;
+  std::set<PlotDocker*> affected_dockers;
+  forEachWidget([&](PlotWidget* plot, PlotDocker* docker, int) {
+    for (const auto& curve : plot->curveList())
+    {
+      if (_lazy_mf4_series.count(curve.src_name) > 0)
+      {
+        plotted_lazy_series.insert(curve.src_name);
+        if (docker)
+        {
+          affected_dockers.insert(docker);
+        }
+      }
+    }
+  });
+
+  for (const auto& curve_name : plotted_lazy_series)
+  {
+    ensureCurveLoaded(curve_name);
+  }
+
+  for (auto docker : affected_dockers)
+  {
+    docker->refreshTimeViewportAfterDataReload();
+  }
+}
+
 bool MainWindow::hydrateLazyMf4Series(const std::string& curve_name, LazyMf4SeriesInfo& info)
 {
   if (info.loading)
@@ -1844,6 +1873,7 @@ std::unordered_set<std::string> MainWindow::loadDataFromFile(const FileLoadInfo&
         added_names = mapped_data.getAllNames();
         bool remove_old = !merge_files;
         importPlotDataMap(mapped_data, remove_old);
+        reloadPlottedLazyMf4Series();
 
         QDomElement plugin_elem = dataloader->xmlSaveState(new_info.plugin_config);
         new_info.plugin_config.appendChild(plugin_elem);

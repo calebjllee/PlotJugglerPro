@@ -476,6 +476,28 @@ void PlotDocker::refreshSharedTimeAxes()
   repositionTimelineSlider();
 }
 
+void PlotDocker::refreshTimeViewportAfterDataReload()
+{
+  auto full_range = fullTimeseriesRange();
+  if (!full_range)
+  {
+    updateTimelineSlider();
+    repositionTimelineSlider();
+    return;
+  }
+
+  Range target = _time_viewport.value_or(*full_range);
+  const bool invalid_target = !std::isfinite(target.min) || !std::isfinite(target.max) ||
+                              target.max <= target.min;
+  const bool outside_data = target.max < full_range->min || target.min > full_range->max;
+  if (invalid_target || outside_data)
+  {
+    target = *full_range;
+  }
+
+  setTimeViewport(target, nullptr, true);
+}
+
 void PlotDocker::setTrackerTime(double tracker_time)
 {
   _tracker_time = tracker_time;
