@@ -101,6 +101,12 @@ bool waitWithEvents(int milliseconds, QProgressDialog* progress = nullptr,
   }
   return true;
 }
+
+bool isRetryableDownloadStatus(int status_code)
+{
+  return QSet<int>({ 0, 301, 302, 303, 307, 308, 408, 429, 500, 502, 503, 504 })
+      .contains(status_code);
+}
 }  // namespace
 
 namespace PJ
@@ -271,11 +277,7 @@ QString SharePointGraphClient::downloadFile(const SharePointDriveItem& folder,
     }
   }
 
-  QUrl download_url(file.downloadUrl);
-  if (download_url.isEmpty())
-  {
-    download_url = QUrl(QString("%1/drives/%2/items/%3/content").arg(GRAPH_BASE, _drive_id, file.id));
-  }
+  const QUrl download_url(QString("%1/drives/%2/items/%3/content").arg(GRAPH_BASE, _drive_id, file.id));
 
   QProgressDialog progress(_parent);
   progress.setWindowTitle(QObject::tr("Downloading SharePoint Log"));
@@ -287,10 +289,7 @@ QString SharePointGraphClient::downloadFile(const SharePointDriveItem& folder,
 
   QNetworkRequest request(download_url);
   request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
-  if (download_url.host().contains("graph.microsoft.com"))
-  {
-    request.setRawHeader("Authorization", QString("Bearer %1").arg(_access_token).toUtf8());
-  }
+  request.setRawHeader("Authorization", QString("Bearer %1").arg(_access_token).toUtf8());
   if (!downloadWithRetry(request, local_path, &progress, error))
   {
     return {};
@@ -563,7 +562,7 @@ SharePointGraphClient::HttpResult SharePointGraphClient::sendWithRetry(
       result = sendRequest(retry_request, method, body, progress);
     }
     if ((result.status_code >= 200 && result.status_code < 300) ||
-        !QSet<int>({ 0, 429, 500, 502, 503, 504 }).contains(result.status_code))
+        !isRetryableDownloadStatus(result.status_code))
     {
       break;
     }

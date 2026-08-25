@@ -342,14 +342,14 @@ void PlotWidget::canvasContextMenuTriggered(const QPoint& pos)
 
   menu.addAction(_action_edit);
   menu.addAction(_action_formula);
-  menu.addAction(_action_new_map_split);
   if (isXYPlot())
   {
     menu.addAction(_action_convert_to_map);
   }
   menu.addSeparator();
-  menu.addAction(_action_split_horizontal);
   menu.addAction(_action_split_vertical);
+  menu.addAction(_action_new_map_split);
+  menu.addAction(_action_split_horizontal);
   menu.addSeparator();
   menu.addAction(_action_zoomOutMaximum);
   menu.addAction(_action_zoomOutHorizontally);

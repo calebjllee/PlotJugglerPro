@@ -354,9 +354,9 @@ void MapDockPanel::showContextMenu(const QPoint& pos)
   menu.setStyleSheet("QMenu::icon { width: 12px; }");
   auto* fit_action = menu.addAction("Fit to View");
   menu.addSeparator();
-  auto* split_h_action = menu.addAction("Add X/Y Panel");
   auto* split_v_action = menu.addAction("Add Time-Series Chart");
   auto* split_map_action = menu.addAction("Add Map View");
+  auto* split_h_action = menu.addAction("Add X/Y Panel");
 
   {
     QSettings settings;
