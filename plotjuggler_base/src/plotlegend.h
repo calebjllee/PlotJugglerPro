@@ -22,6 +22,12 @@ public:
 
   const QwtPlotItem* processMousePressEvent(QMouseEvent* mouse_event);
 
+  bool startLegendDrag(QMouseEvent* mouse_event, QWidget* source_widget);
+
+  bool hasPendingLegendDrag() const;
+
+  void resetLegendDrag();
+
   const QwtPlotItem* itemAt(const QPoint& canvas_pos) const;
 
   bool setHoveredItem(const QwtPlotItem* item);
@@ -51,6 +57,8 @@ private:
   QwtPlot* _parent_plot;
   bool _collapsed;
   const QwtPlotItem* _hovered_item = nullptr;
+  const QwtPlotItem* _pressed_item = nullptr;
+  QPoint _press_pos;
 };
 
 #endif  // PLOTLEGEND_H

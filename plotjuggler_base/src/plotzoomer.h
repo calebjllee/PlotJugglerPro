@@ -30,6 +30,8 @@ public:
 
   void setXOnlyZoom(bool x_only);
 
+  void cancelInteraction();
+
 protected:
   virtual void widgetMousePressEvent(QMouseEvent* event) override;
   virtual void widgetMouseReleaseEvent(QMouseEvent* event) override;

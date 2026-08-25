@@ -5,7 +5,12 @@
  */
 
 #include "plotlegend.h"
+#include <QApplication>
+#include <QByteArray>
+#include <QDataStream>
+#include <QDrag>
 #include <QEvent>
+#include <QMimeData>
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QPainter>
@@ -28,6 +33,29 @@ QString legendDisplayName(QString title)
     return title.mid(separator_pos + 1);
   }
   return title;
+}
+
+QPixmap makeDragLabelPixmap(QWidget* widget, QString text)
+{
+  const QFont font = widget->font();
+  const QFontMetrics fm(font);
+  text = fm.elidedText(text, Qt::ElideMiddle, 260);
+
+  const int margin_x = 10;
+  const int margin_y = 5;
+  const QSize size(fm.horizontalAdvance(text) + margin_x * 2, fm.height() + margin_y * 2);
+  QPixmap pixmap(size);
+  pixmap.fill(Qt::transparent);
+
+  QPainter painter(&pixmap);
+  painter.setRenderHint(QPainter::Antialiasing, true);
+  painter.setFont(font);
+  painter.setPen(widget->palette().foreground().color());
+  painter.setBrush(widget->palette().base().color());
+  painter.drawRoundedRect(pixmap.rect().adjusted(0, 0, -1, -1), 6, 6);
+  painter.drawText(pixmap.rect().adjusted(margin_x, margin_y, -margin_x, -margin_y),
+                   Qt::AlignVCenter | Qt::AlignLeft, text);
+  return pixmap;
 }
 
 QwtText legendDisplayText(const QwtText& text)
@@ -397,6 +425,9 @@ const QwtPlotItem* PlotLegend::processMousePressEvent(QMouseEvent* mouse_event)
   LayoutData layout = computeLayout(canvas_rect);
   const QPoint press_point = mouse_event->pos();
 
+  _pressed_item = nullptr;
+  _press_pos = QPoint();
+
   if (isVisible() && mouse_event->modifiers() == Qt::NoModifier)
   {
     if ((hideButtonRect() + QMargins(2, 2, 2, 2)).contains(press_point))
@@ -412,12 +443,63 @@ const QwtPlotItem* PlotLegend::processMousePressEvent(QMouseEvent* mouse_event)
       {
         if (it.value().contains(press_point))
         {
-          return it.key();
+          _pressed_item = it.key();
+          _press_pos = press_point;
+          return _pressed_item;
         }
       }
     }
   }
   return nullptr;
+}
+
+bool PlotLegend::startLegendDrag(QMouseEvent* mouse_event, QWidget* source_widget)
+{
+  if (_pressed_item == nullptr || mouse_event->buttons() != Qt::LeftButton)
+  {
+    return false;
+  }
+
+  const auto* curve_item = dynamic_cast<const QwtPlotCurve*>(_pressed_item);
+  if (!curve_item)
+  {
+    resetLegendDrag();
+    return false;
+  }
+
+  const QPoint delta = mouse_event->pos() - _press_pos;
+  if (delta.manhattanLength() < QApplication::startDragDistance())
+  {
+    return false;
+  }
+
+  QDrag* drag = new QDrag(source_widget);
+  auto* mimeData = new QMimeData;
+  QByteArray mdata;
+  QDataStream stream(&mdata, QIODevice::WriteOnly);
+
+  const QString curve_name = curve_item->title().text();
+  stream << curve_name;
+  mimeData->setData("curveslist/add_curve", mdata);
+  const QPixmap label_pixmap = makeDragLabelPixmap(source_widget, legendDisplayName(curve_name));
+  drag->setPixmap(label_pixmap);
+  drag->setHotSpot(QPoint(10, label_pixmap.height() / 2));
+  drag->setMimeData(mimeData);
+  drag->exec(Qt::CopyAction | Qt::MoveAction);
+
+  resetLegendDrag();
+  return true;
+}
+
+bool PlotLegend::hasPendingLegendDrag() const
+{
+  return _pressed_item != nullptr;
+}
+
+void PlotLegend::resetLegendDrag()
+{
+  _pressed_item = nullptr;
+  _press_pos = QPoint();
 }
 
 const QwtPlotItem* PlotLegend::itemAt(const QPoint& canvas_pos) const

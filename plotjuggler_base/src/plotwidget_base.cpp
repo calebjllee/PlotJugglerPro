@@ -678,6 +678,23 @@ bool PlotWidgetBase::eventFilter(QObject* obj, QEvent* event)
     {
       case QEvent::MouseMove: {
         auto mouse_event = dynamic_cast<QMouseEvent*>(event);
+        if (mouse_event && mouse_event->buttons() == Qt::LeftButton &&
+            mouse_event->modifiers() == Qt::NoModifier && legend()->isVisible())
+        {
+          if (legend()->hasPendingLegendDrag())
+          {
+            zoomer()->cancelInteraction();
+          }
+          if (legend()->startLegendDrag(mouse_event, qwtPlot()->canvas()))
+          {
+            return true;
+          }
+          if (legend()->hasPendingLegendDrag())
+          {
+            return true;
+          }
+        }
+
         auto hovered_item = legend()->itemAt(mouse_event->pos());
         bool hovered_hide_button =
             (legend()->hideButtonRect() + QMargins(2, 2, 2, 2)).contains(mouse_event->pos());
@@ -758,6 +775,16 @@ bool PlotWidgetBase::eventFilter(QObject* obj, QEvent* event)
         if (changed)
         {
           replot();
+        }
+      }
+      break;
+
+      case QEvent::MouseButtonRelease: {
+        if (legend()->hasPendingLegendDrag())
+        {
+          zoomer()->cancelInteraction();
+          legend()->resetLegendDrag();
+          return true;
         }
       }
       break;

@@ -74,6 +74,7 @@ const double MAX_DOUBLE = std::numeric_limits<double>::max() / 2;
 
 static bool if_xy_plot_failed_show_dialog = true;
 static const char* kCompactMenuIconStyle = "QMenu::icon { width: 12px; }";
+static const char* kPlotWidgetDragSourceProperty = "plotjuggler.plot_widget_drag_source";
 
 namespace
 {
@@ -106,6 +107,19 @@ QString formattedCurveValue(const QwtPlotCurve* curve, double value, int precisi
   return value_text;
 }
 
+PlotWidget* plotWidgetFromDragSource(QObject* source)
+{
+  auto* widget = qobject_cast<QWidget*>(source);
+  if (!widget)
+  {
+    return nullptr;
+  }
+
+  bool ok = false;
+  const auto value = widget->property(kPlotWidgetDragSourceProperty).toULongLong(&ok);
+  return ok ? reinterpret_cast<PlotWidget*>(value) : nullptr;
+}
+
 }  // namespace
 
 PlotWidget::PlotWidget(PlotDataMapRef& datamap, QWidget* parent)
@@ -121,6 +135,9 @@ PlotWidget::PlotWidget(PlotDataMapRef& datamap, QWidget* parent)
   connect(this, &PlotWidget::curveListChanged, this, [this]() { this->updateMaximumZoomArea(); });
 
   qwtPlot()->setAcceptDrops(true);
+  qwtPlot()->canvas()->setProperty(
+      kPlotWidgetDragSourceProperty,
+      QVariant::fromValue<qulonglong>(reinterpret_cast<qulonglong>(this)));
 
   //--------------------------
   _tracker = (new CurveTracker(qwtPlot(), Qt::red));
@@ -647,12 +664,14 @@ void PlotWidget::onDragLeaveEvent(QDragLeaveEvent* event)
   _dragging.curves.clear();
 }
 
-void PlotWidget::onDropEvent(QDropEvent*)
+void PlotWidget::onDropEvent(QDropEvent* event)
 {
   bool curves_changed = false;
 
   const bool plot_was_empty = curveList().empty();
   bool dropped_timeseries = false;
+  PlotWidget* source_plot = plotWidgetFromDragSource(_dragging.source);
+  std::vector<QString> moved_curves;
 
   if (_dragging.mode == DragInfo::CURVES)
   {
@@ -706,6 +725,10 @@ void PlotWidget::onDropEvent(QDropEvent*)
     {
       bool added = addCurve(curve_name.toStdString()) != nullptr;
       curves_changed = curves_changed || added;
+      if (added && source_plot && source_plot != this)
+      {
+        moved_curves.push_back(curve_name);
+      }
     }
   }
   else if (_dragging.mode == DragInfo::NEW_XY && _dragging.curves.size() == 2)
@@ -730,6 +753,19 @@ void PlotWidget::onDropEvent(QDropEvent*)
 
   if (curves_changed)
   {
+    for (const auto& curve_name : moved_curves)
+    {
+      source_plot->removeCurve(curve_name);
+    }
+    if (!moved_curves.empty())
+    {
+      source_plot->replot();
+      if (event)
+      {
+        event->setDropAction(Qt::MoveAction);
+      }
+    }
+
     emit curvesDropped();
     emit curveListChanged();
 

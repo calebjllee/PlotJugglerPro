@@ -107,6 +107,20 @@ void PlotZoomer::setXOnlyZoom(bool x_only)
   _x_only_zoom = x_only;
 }
 
+void PlotZoomer::cancelInteraction()
+{
+  _mouse_pressed = false;
+  if (_zoom_enabled)
+  {
+    QApplication::restoreOverrideCursor();
+    _zoom_enabled = false;
+  }
+  this->setRubberBand(NoRubberBand);
+  this->setTrackerMode(AlwaysOff);
+  updateXOnlyBand(false);
+  this->updateDisplay();
+}
+
 void PlotZoomer::widgetMousePressEvent(QMouseEvent* me)
 {
   _mouse_pressed = false;

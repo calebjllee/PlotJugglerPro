@@ -7,11 +7,59 @@
 #include "curvelist_view.h"
 #include <QApplication>
 #include <QDrag>
+#include <QFontMetrics>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QPainter>
 #include <QDebug>
 #include <QScrollBar>
 #include "curvelist_panel.h"
+
+namespace
+{
+QPixmap makeDragLabelPixmap(QWidget* widget, QString text)
+{
+  const QFont font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
+  const QFontMetrics fm(font);
+  text = fm.elidedText(text, Qt::ElideMiddle, 260);
+
+  const int margin_x = 10;
+  const int margin_y = 5;
+  const QSize size(fm.horizontalAdvance(text) + margin_x * 2, fm.height() + margin_y * 2);
+  QPixmap pixmap(size);
+  pixmap.fill(Qt::transparent);
+
+  QPainter painter(&pixmap);
+  painter.setRenderHint(QPainter::Antialiasing, true);
+  painter.setFont(font);
+  painter.setPen(widget->palette().foreground().color());
+  painter.setBrush(widget->palette().base().color());
+  painter.drawRoundedRect(pixmap.rect().adjusted(0, 0, -1, -1), 6, 6);
+  painter.drawText(pixmap.rect().adjusted(margin_x, margin_y, -margin_x, -margin_y),
+                   Qt::AlignVCenter | Qt::AlignLeft, text);
+  return pixmap;
+}
+
+QString dragLabelForSelection(const std::vector<std::string>& selected_names, bool new_x_axis)
+{
+  if (selected_names.empty())
+  {
+    return {};
+  }
+  if (new_x_axis && selected_names.size() == 2)
+  {
+    return QStringLiteral("%1 vs %2")
+        .arg(QString::fromStdString(selected_names[0]), QString::fromStdString(selected_names[1]));
+  }
+  if (selected_names.size() == 1)
+  {
+    return QString::fromStdString(selected_names.front());
+  }
+  return QStringLiteral("%1 + %2 more")
+      .arg(QString::fromStdString(selected_names.front()))
+      .arg(selected_names.size() - 1);
+}
+}  // namespace
 
 CurveTableView::CurveTableView(CurveListPanel* parent) : QTableWidget(parent), CurvesView(parent)
 {
@@ -287,24 +335,12 @@ bool CurvesView::eventFilterBase(QObject* object, QEvent* event)
           return true;
         }
         mimeData->setData("curveslist/new_XY_axis", mdata);
-
-        QPixmap cursor(QSize(80, 30));
-        cursor.fill(Qt::transparent);
-
-        QPainter painter;
-        painter.begin(&cursor);
-
-        QString text("XY");
-        painter.setFont(QFont("Arial", 14));
-
-        painter.setBackground(Qt::transparent);
-        painter.setPen(table_widget->palette().foreground().color());
-        painter.drawText(QRect(0, 0, 80, 30), Qt::AlignCenter, text);
-        painter.end();
-
-        drag->setDragCursor(cursor, Qt::MoveAction);
       }
 
+      const QPixmap label_pixmap =
+          makeDragLabelPixmap(table_widget, dragLabelForSelection(selected_names, _newX_modifier));
+      drag->setPixmap(label_pixmap);
+      drag->setHotSpot(QPoint(10, label_pixmap.height() / 2));
       drag->setMimeData(mimeData);
       drag->exec(Qt::CopyAction | Qt::MoveAction);
     }
