@@ -126,8 +126,8 @@ void CurveTracker::setPosition(const QPointF& tracker_position)
   rect.setRight(_plot->canvasMap(QwtPlot::xBottom).s2());
   QRect canvas_rect = _plot->canvas()->rect();
 
-  double min_Y = std::numeric_limits<double>::max();
-  double max_Y = -min_Y;
+  int min_Y_pixel = std::numeric_limits<int>::max();
+  int max_Y_pixel = std::numeric_limits<int>::lowest();
   int visible_points = 0;
 
   while (_point_markers.size() > curves.size())
@@ -192,8 +192,8 @@ void CurveTracker::setPosition(const QPointF& tracker_position)
 
     if (canvas_rect.contains(pixel) && _visible)
     {
-      min_Y = std::min(min_Y, point.y());
-      max_Y = std::max(max_Y, point.y());
+      min_Y_pixel = std::min(min_Y_pixel, pixel.y());
+      max_Y_pixel = std::max(max_Y_pixel, pixel.y());
 
       visible_points++;
       double value = point.y();
@@ -299,7 +299,9 @@ void CurveTracker::setPosition(const QPointF& tracker_position)
 
   if (visible_points > 0)
   {
-    _text_marker->setYValue(0.5 * (max_Y + min_Y));
+    const int label_y_pixel = (min_Y_pixel + max_Y_pixel) / 2;
+    _text_marker->setAxes(QwtPlot::xBottom, QwtPlot::yLeft);
+    _text_marker->setYValue(_plot->invTransform(QwtPlot::yLeft, label_y_pixel));
   }
 
   double canvas_ratio = rect.width() / double(_plot->width());

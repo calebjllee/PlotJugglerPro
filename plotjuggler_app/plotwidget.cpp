@@ -1958,16 +1958,16 @@ void PlotWidget::showPointValues(QPoint point)
   }
   const QwtPlotItemList curves = qwtPlot()->itemList(QwtPlotItem::Rtti_PlotCurve);
 
-  auto paint_to_plot = [this](QPoint p) {
+  auto paint_to_plot = [this](QPoint p, QwtAxisId y_axis) {
     return QPointF(qwtPlot()->invTransform(QwtPlot::xBottom, p.x()),
-                   qwtPlot()->invTransform(QwtPlot::yLeft, p.y()));
+                   qwtPlot()->invTransform(y_axis, p.y()));
   };
   auto plot_to_paint = [this](QPointF p, QwtAxisId y_axis) {
     return QPoint(qwtPlot()->transform(QwtPlot::xBottom, p.x()),
                   qwtPlot()->transform(y_axis, p.y()));
   };
 
-  const QPointF pointF = paint_to_plot(point);
+  const QPointF pointF = paint_to_plot(point, QwtPlot::yLeft);
 
   QSettings settings;
   const int prec = settings.value("Preferences::precision", 3).toInt();
@@ -2011,7 +2011,7 @@ void PlotWidget::showPointValues(QPoint point)
   if (updated)
   {
     const QPoint marker_pos_paint = plot_to_paint(marker_point, marker_axis);
-    const QPointF offset_point = paint_to_plot(marker_pos_paint + QPoint(15, -20));
+    const QPointF offset_point = paint_to_plot(marker_pos_paint + QPoint(15, -20), marker_axis);
 
     QwtText mark_text;
     mark_text.setText(text);
@@ -2038,7 +2038,8 @@ void PlotWidget::showPointValues(QPoint point)
 
     if (flip_horizontally)
     {
-      _show_point_text->setValue(paint_to_plot(marker_pos_paint + QPoint(-15 - text_width, -20)));
+      _show_point_text->setValue(
+          paint_to_plot(marker_pos_paint + QPoint(-15 - text_width, -20), marker_axis));
     }
   }
 
