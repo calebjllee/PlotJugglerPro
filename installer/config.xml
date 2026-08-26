@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <Installer>
   <Name>PlotJugglerPro</Name>
-  <Version>2026.8.14</Version>
+  <Version>2026.8.26</Version>
   <Title>PlotJugglerPro installer</Title>
   <Publisher>PlotJugglerPro</Publisher>
   <StyleSheet>installer.qss</StyleSheet>

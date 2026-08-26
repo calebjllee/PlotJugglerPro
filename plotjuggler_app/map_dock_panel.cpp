@@ -18,6 +18,7 @@
 #include <QLabel>
 #include <QMenu>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QTextBrowser>
@@ -65,12 +66,16 @@ MapDockPanel::MapDockPanel(PJ::PlotDataMapRef& plot_data, QWidget* parent)
   auto* lat_label = new QLabel("Lat", this);
   _lat_combo = new QComboBox(this);
   _lat_combo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-  _lat_combo->setMinimumContentsLength(20);
+  _lat_combo->setMinimumContentsLength(8);
+  _lat_combo->setMinimumWidth(70);
+  _lat_combo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
 
   auto* lon_label = new QLabel("Lon", this);
   _lon_combo = new QComboBox(this);
   _lon_combo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-  _lon_combo->setMinimumContentsLength(20);
+  _lon_combo->setMinimumContentsLength(8);
+  _lon_combo->setMinimumWidth(70);
+  _lon_combo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
 
   auto* fit_button = new QPushButton("Fit to View", this);
 
@@ -80,11 +85,11 @@ MapDockPanel::MapDockPanel(PJ::PlotDataMapRef& plot_data, QWidget* parent)
     fit_button->setIcon(LoadSvg(":/resources/svg/zoom_max.svg", theme));
   }
 
+  row->addWidget(fit_button);
   row->addWidget(lat_label);
   row->addWidget(_lat_combo, 1);
   row->addWidget(lon_label);
   row->addWidget(_lon_combo, 1);
-  row->addWidget(fit_button);
 
   auto* trail_row = new QHBoxLayout();
   trail_row->setSpacing(6);
@@ -450,13 +455,15 @@ void MapDockPanel::updateRouteOnMap()
   if (!selectedSeries(lat_series, lon_series))
   {
     setStatus("Select valid latitude/longitude series");
-    _web_view->page()->runJavaScript("window.pj_setRoute([], false);");
+    _web_view->page()->runJavaScript("window.pj_setRoute([], false, []);");
     return;
   }
 
   QJsonArray points;
+  QJsonArray fit_points;
   const auto sample_count = std::min(lat_series->size(), lon_series->size());
   points = QJsonArray();
+  fit_points = QJsonArray();
 
   const double max_time =
       _has_time ? _last_time : std::numeric_limits<double>::infinity();
@@ -472,7 +479,7 @@ void MapDockPanel::updateRouteOnMap()
     const auto& lon_pt = (*lon_series)[i];
     const double point_time = std::max(lat_pt.x, lon_pt.x);
 
-    if (!std::isfinite(point_time) || point_time > max_time || point_time < min_time)
+    if (!std::isfinite(point_time))
     {
       continue;
     }
@@ -489,13 +496,20 @@ void MapDockPanel::updateRouteOnMap()
     QJsonArray ll;
     ll.append(lat_pt.y);
     ll.append(lon_pt.y);
-    points.append(ll);
+    fit_points.append(ll);
+
+    if (point_time <= max_time && point_time >= min_time)
+    {
+      points.append(ll);
+    }
   }
 
-  const QJsonDocument doc(points);
-  const QString js = QString("window.pj_setRoute(%1, %2);")
-                         .arg(QString::fromUtf8(doc.toJson(QJsonDocument::Compact)))
-                         .arg(_fit_route_once ? "true" : "false");
+  const QJsonDocument route_doc(points);
+  const QJsonDocument fit_doc(fit_points);
+  const QString js = QString("window.pj_setRoute(%1, %2, %3);")
+                         .arg(QString::fromUtf8(route_doc.toJson(QJsonDocument::Compact)))
+                         .arg(_fit_route_once ? "true" : "false")
+                         .arg(QString::fromUtf8(fit_doc.toJson(QJsonDocument::Compact)));
 
   _web_view->page()->runJavaScript(js);
   _fit_route_once = false;
@@ -581,14 +595,23 @@ QString MapDockPanel::mapHtml()
 {
   auto tile_url = qEnvironmentVariable("PJ_MAP_TILES_URL");
   auto tile_attr = qEnvironmentVariable("PJ_MAP_ATTRIBUTION");
+  bool using_default_tiles = false;
+  int tile_max_zoom = qEnvironmentVariableIntValue("PJ_MAP_MAX_ZOOM");
 
   if (tile_url.isEmpty())
   {
-    tile_url = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+    using_default_tiles = true;
+    tile_url =
+        "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/"
+        "MapServer/tile/{z}/{y}/{x}";
   }
   if (tile_attr.isEmpty())
   {
-    tile_attr = "&copy; OpenStreetMap contributors &copy; CARTO";
+    tile_attr = "USGS The National Map";
+  }
+  if (tile_max_zoom <= 0)
+  {
+    tile_max_zoom = using_default_tiles ? 16 : 19;
   }
 
   auto escape_js = [](QString str) {
@@ -601,6 +624,7 @@ QString MapDockPanel::mapHtml()
 
   const QString tile_url_js = escape_js(tile_url);
   const QString tile_attr_js = escape_js(tile_attr);
+  const QString tile_max_zoom_js = QString::number(tile_max_zoom);
 
   return QString(R"HTML(
 <!doctype html>
@@ -620,17 +644,18 @@ QString MapDockPanel::mapHtml()
     let pjMap = null;
     let pjRoute = null;
     let pjMarker = null;
+    let pjFitPoints = [];
 
     function ensureMap() {
       if (pjMap) {
         return;
       }
-      pjMap = L.map('map', { preferCanvas: true }).setView([0, 0], 2);
+      pjMap = L.map('map', { preferCanvas: true, maxZoom: %3 }).setView([0, 0], 2);
       const tileUrl = '%1';
       const tileAttribution = '%2';
       if (tileUrl && tileUrl.length > 0) {
         L.tileLayer(tileUrl, {
-          maxZoom: 19,
+          maxZoom: %3,
           attribution: tileAttribution
         }).addTo(pjMap);
       }
@@ -649,9 +674,10 @@ QString MapDockPanel::mapHtml()
       pjMarker.bringToFront();
     }
 
-    window.pj_setRoute = function(points, fitBounds) {
+    window.pj_setRoute = function(points, fitBounds, fitPoints) {
       ensureMap();
       pjRoute.setLatLngs(points || []);
+      pjFitPoints = fitPoints || points || [];
       pjMarker.bringToFront();
       if (fitBounds) {
         window.pj_fitRoute();
@@ -660,7 +686,7 @@ QString MapDockPanel::mapHtml()
 
     window.pj_fitRoute = function() {
       ensureMap();
-      const pts = pjRoute.getLatLngs();
+      const pts = pjFitPoints && pjFitPoints.length > 0 ? pjFitPoints : pjRoute.getLatLngs();
       if (!pts || pts.length === 0) {
         return;
       }
@@ -668,7 +694,7 @@ QString MapDockPanel::mapHtml()
         pjMap.setView(pts[0], 16);
         return;
       }
-      pjMap.fitBounds(pjRoute.getBounds(), { padding: [20, 20] });
+      pjMap.fitBounds(L.latLngBounds(pts), { padding: [20, 20] });
     }
 
     window.pj_setPosition = function(lat, lon) {
@@ -682,5 +708,5 @@ QString MapDockPanel::mapHtml()
 </body>
 </html>
   )HTML")
-      .arg(tile_url_js, tile_attr_js);
+      .arg(tile_url_js, tile_attr_js, tile_max_zoom_js);
 }

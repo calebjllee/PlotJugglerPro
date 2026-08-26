@@ -13,6 +13,10 @@
 
 ## Current Product Direction
 
+Expected usage is small and occasional: roughly 10-20 people using the app
+intermittently. Optimize decisions for a practical internal/beta workflow, not
+mass-public scale, high-volume hosted services, or broad anonymous distribution.
+
 PlotJugglerPro is a local data-review workflow fork with:
 
 - native dock/split map panels,
@@ -100,6 +104,8 @@ instructions unless the task is explicitly to revive that platform.
 - `Fit to View` refreshes data, runs detection, and fits the route.
 - Right-click inside the map is forwarded to app code; WebEngine's default
   context menu is suppressed.
+- The default packaged map can use USGS The National Map imagery/topo tiles
+  because expected usage is small, occasional, and US-focused.
 - Do not default app code to `tile.openstreetmap.org`; configure tiles with
   `PJ_MAP_TILES_URL` and `PJ_MAP_ATTRIBUTION`.
 
