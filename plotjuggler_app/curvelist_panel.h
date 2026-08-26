@@ -78,7 +78,7 @@ private slots:
 
   void on_checkBoxShowValues_toggled(bool show);
 
-  void on_checkBoxFlatSignals_toggled(bool flat);
+  void on_checkBoxTreeView_toggled(bool tree_view);
 
   void on_pushButtonTrash_clicked(bool checked);
 

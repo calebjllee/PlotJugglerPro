@@ -58,9 +58,12 @@ CurveListPanel::CurveListPanel(PlotDataMapRef& mapped_plot_data,
 
   QSettings settings;
 
-  bool flat_signals = settings.value("CurveListPanel/flat_signals", true).toBool();
-  _tree_view->setFlatSignalList(flat_signals);
-  ui->checkBoxFlatSignals->setChecked(flat_signals);
+  const bool tree_view =
+      settings.value("CurveListPanel/tree_view",
+                     !settings.value("CurveListPanel/flat_signals", true).toBool())
+          .toBool();
+  _tree_view->setFlatSignalList(!tree_view);
+  ui->checkBoxTreeView->setChecked(tree_view);
   ui->checkBoxShowValues->setChecked(true);
 
   int point_size = settings.value("FilterableListWidget/table_point_size", 9).toInt();
@@ -613,12 +616,13 @@ void CurveListPanel::on_checkBoxShowValues_toggled(bool show)
   emit hiddenItemsChanged();
 }
 
-void CurveListPanel::on_checkBoxFlatSignals_toggled(bool flat)
+void CurveListPanel::on_checkBoxTreeView_toggled(bool tree_view)
 {
   QSettings settings;
-  settings.setValue("CurveListPanel/flat_signals", flat);
+  settings.setValue("CurveListPanel/tree_view", tree_view);
+  settings.setValue("CurveListPanel/flat_signals", !tree_view);
 
-  _tree_view->setFlatSignalList(flat);
+  _tree_view->setFlatSignalList(!tree_view);
   updateTreeModel();
   emit hiddenItemsChanged();
 }
