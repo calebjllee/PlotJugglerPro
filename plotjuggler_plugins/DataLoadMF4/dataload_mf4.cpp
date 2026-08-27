@@ -160,6 +160,10 @@ bool processMetadataLine(const QByteArray& line, PJ::PlotDataMapRef& destination
     const qint64 samples = qint64(object.value(QStringLiteral("samples")).toDouble());
 
     auto& series = destination.getOrCreateNumeric(name);
+    if (!unit.isEmpty())
+    {
+      series.setAttribute(PJ::UNIT, unit);
+    }
     series.setAttribute(PJ::TOOL_TIP,
                         QStringLiteral("MF4 lazy channel\nState: unloaded\nSamples: %1\nUnit: %2")
                             .arg(samples)

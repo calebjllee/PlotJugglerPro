@@ -1675,6 +1675,10 @@ bool MainWindow::hydrateLazyMf4Series(const std::string& curve_name, LazyMf4Seri
       QStringLiteral("MF4 lazy channel\nState: loaded\nSamples: %1\nUnit: %2")
           .arg(info.sample_count)
           .arg(info.unit.isEmpty() ? QStringLiteral("-") : info.unit));
+  if (!info.unit.isEmpty())
+  {
+    series_it->second.setAttribute(PJ::UNIT, info.unit);
+  }
   series_it->second.setAttribute(PJ::ITALIC_FONTS, false);
   if (!value_labels.isEmpty())
   {

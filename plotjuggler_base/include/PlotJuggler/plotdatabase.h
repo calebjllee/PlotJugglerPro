@@ -56,7 +56,11 @@ enum PlotAttribute
 
   // Optional map of numeric values to display labels.
   // Type: QVariantMap
-  VALUE_LABELS
+  VALUE_LABELS,
+
+  // Physical unit to display with the series name.
+  // Type: QString
+  UNIT
 };
 
 using Attributes = std::unordered_map<PlotAttribute, QVariant>;
@@ -71,6 +75,7 @@ inline bool CheckType(PlotAttribute attr, const QVariant& value)
     case ITALIC_FONTS:
       return value.type() == QVariant::Bool;
     case TOOL_TIP:
+    case UNIT:
       return value.type() == QVariant::String;
     case VALUE_LABELS:
       return value.type() == QVariant::Map;
