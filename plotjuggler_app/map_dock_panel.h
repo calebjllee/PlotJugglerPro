@@ -28,6 +28,7 @@ public:
   void onTimeUpdated(double absolute_time);
   void loadDetectedCurves();
   void refreshCurveCombos();
+  void refreshAfterDataReload();
 
   QDomElement xmlSaveState(QDomDocument& doc) const;
   bool xmlLoadState(const QDomElement& element);

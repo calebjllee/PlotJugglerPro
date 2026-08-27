@@ -1236,6 +1236,7 @@ void MainWindow::onDeleteMultipleCurves(const std::vector<std::string>& curve_na
     _transform_functions.erase(curve_name);
   }
   updateTimeOffset();
+  refreshMapPanelsAfterDataReload();
   forEachWidget([](PlotWidget* plot) { plot->replot(); });
 }
 
@@ -1398,6 +1399,8 @@ void MainWindow::importPlotDataMap(PlotDataMapRef& new_data, bool remove_old)
   {
     _curvelist_widget->refreshColumns();
   }
+
+  refreshMapPanelsAfterDataReload();
 }
 
 void MainWindow::registerLazyMf4Series()
@@ -2750,6 +2753,14 @@ void MainWindow::forEachMapPanel(std::function<void(MapDockPanel*)> op)
   }
 }
 
+void MainWindow::refreshMapPanelsAfterDataReload()
+{
+  forEachMapPanel([this](MapDockPanel* panel) {
+    panel->refreshAfterDataReload();
+    panel->onTimeUpdated(_tracker_time);
+  });
+}
+
 void MainWindow::updateTimeSlider()
 {
   for (const auto& it : TabbedPlotWidget::instances())
@@ -2786,6 +2797,7 @@ void MainWindow::updateDataAndReplot(bool replot_hidden_tabs)
   _replot_timer->stop();
 
   MoveDataRet move_ret;
+  bool refresh_map_panels = false;
 
   if (_active_streamer_plugin)
   {
@@ -2798,10 +2810,12 @@ void MainWindow::updateDataAndReplot(bool replot_hidden_tabs)
     {
       _curvelist_widget->addCurve(str);
     }
+    refresh_map_panels = !move_ret.added_curves.empty();
 
     if (move_ret.curves_updated)
     {
       _curvelist_widget->refreshColumns();
+      refresh_map_panels = true;
     }
 
     if (ui->streamingSpinBox->value() == ui->streamingSpinBox->maximum())
@@ -2839,6 +2853,10 @@ void MainWindow::updateDataAndReplot(bool replot_hidden_tabs)
   }
 
   forEachWidget([](PlotWidget* plot) { plot->updateCurves(false); });
+  if (refresh_map_panels)
+  {
+    refreshMapPanelsAfterDataReload();
+  }
 
   //--------------------------------
   // trigger again the execution of this callback if steaming == true

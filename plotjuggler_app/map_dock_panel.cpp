@@ -175,6 +175,13 @@ void MapDockPanel::loadDetectedCurves()
   refreshCurveCombos();
 }
 
+void MapDockPanel::refreshAfterDataReload()
+{
+  refreshCurveCombos();
+  requestSelectedCurveLoad();
+  refreshCurveCombos();
+}
+
 QDomElement MapDockPanel::xmlSaveState(QDomDocument& doc) const
 {
   auto el = doc.createElement("map_panel");

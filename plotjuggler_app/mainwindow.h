@@ -226,6 +226,7 @@ private:
   void forEachWidget(std::function<void(PlotWidget*, PlotDocker*, int)> op);
   void forEachWidget(std::function<void(PlotWidget*)> op);
   void forEachMapPanel(std::function<void(MapDockPanel*)> op);
+  void refreshMapPanelsAfterDataReload();
 
   void rearrangeGridLayout();
 
