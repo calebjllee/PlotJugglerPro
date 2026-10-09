@@ -150,6 +150,7 @@ private:
 
   std::vector<FileLoadInfo> _loaded_datafiles_history;
   std::vector<FileLoadInfo> _loaded_datafiles_previous;
+  QString _base_window_title;
   CurveTracker::Parameter _tracker_param;
 
   struct LazyMf4SeriesInfo
@@ -257,6 +258,7 @@ private:
   void deleteAllData();
 
   void updateRecentDataMenu(QStringList new_filenames);
+  void updateWindowTitle();
   void updateRecentLayoutMenu(QStringList new_filenames);
 
   void updatedDisplayTime();

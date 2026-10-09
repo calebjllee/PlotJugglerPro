@@ -258,6 +258,7 @@ MainWindow::MainWindow(const QCommandLineParser& commandline_parser, QWidget* pa
       setWindowTitle(title);
     }
   }
+  _base_window_title = windowTitle();
 
   QSettings settings;
 
@@ -1331,6 +1332,7 @@ void MainWindow::deleteAllData()
   _transform_functions.clear();
   _curvelist_widget->clear();
   _loaded_datafiles_history.clear();
+  updateWindowTitle();
   _undo_states.clear();
   _redo_states.clear();
 
@@ -1699,6 +1701,21 @@ bool MainWindow::isStreamingActive() const
   return !ui->buttonStreamingPause->isChecked() && _active_streamer_plugin;
 }
 
+void MainWindow::updateWindowTitle()
+{
+  QStringList names;
+  for (const auto& loaded : _loaded_datafiles_history)
+  {
+    names.push_back(QFileInfo(loaded.filename).fileName());
+  }
+  if (names.isEmpty())
+  {
+    setWindowTitle(_base_window_title);
+    return;
+  }
+  setWindowTitle(QString("%1 - %2").arg(names.join(", "), _base_window_title));
+}
+
 bool MainWindow::loadDataFromFiles(QStringList filenames)
 {
   filenames.sort();
@@ -1780,6 +1797,7 @@ bool MainWindow::loadDataFromFiles(QStringList filenames)
   if (loaded_filenames.size() > 0)
   {
     updateRecentDataMenu(loaded_filenames);
+    updateWindowTitle();
     updateTimeSlider();
     return true;
   }
